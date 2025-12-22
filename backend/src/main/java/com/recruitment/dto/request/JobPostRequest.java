@@ -1,0 +1,33 @@
+package com.recruitment.dto.request;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class JobPostRequest {
+    
+    @NotBlank(message = "Job title is required")
+    private String title;
+    
+    @NotBlank(message = "Job description is required")
+    private String description;
+    
+    private String requirements;
+    
+    private String location;
+    
+    private BigDecimal salaryMin;
+    
+    private BigDecimal salaryMax;
+    
+    private String jobType;
+    
+    private LocalDateTime expiryDate;
+}
