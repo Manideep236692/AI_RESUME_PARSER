@@ -12,22 +12,22 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JobPostRequest {
-    
+
     @NotBlank(message = "Job title is required")
     private String title;
-    
+
     @NotBlank(message = "Job description is required")
     private String description;
-    
-    private String requirements;
-    
+
+    private java.util.List<String> requirements;
+
     private String location;
-    
+
     private BigDecimal salaryMin;
-    
+
     private BigDecimal salaryMax;
-    
+
     private String jobType;
-    
-    private LocalDateTime expiryDate;
+
+    private java.time.LocalDate expiryDate;
 }

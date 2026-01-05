@@ -13,6 +13,8 @@ const ViewCandidates = () => {
   useEffect(() => {
     if (jobId) {
       loadApplications();
+    } else {
+      setLoading(false);
     }
   }, [jobId]);
 
@@ -30,7 +32,7 @@ const ViewCandidates = () => {
   const handleStatusChange = async (applicationId, newStatus) => {
     try {
       await updateApplicationStatus(applicationId, newStatus);
-      setApplications(applications.map(app => 
+      setApplications(applications.map(app =>
         app.id === applicationId ? { ...app, status: newStatus } : app
       ));
     } catch (error) {
@@ -47,10 +49,23 @@ const ViewCandidates = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Candidate Applications</h1>
-        <p className="text-gray-600 mt-2">{applications.length} applications received</p>
+        {jobId ? (
+          <p className="text-gray-600 mt-2">{applications.length} applications received</p>
+        ) : (
+          <p className="text-gray-600 mt-2">Select a job to view applications</p>
+        )}
       </div>
 
-      {applications.length > 0 ? (
+      {!jobId ? (
+        <div className="card text-center py-12">
+          <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Job Selected</h3>
+          <p className="text-gray-600 mb-6">Please go to "My Jobs" and select "View Candidates" for a specific job posting.</p>
+          <a href="/recruiter/jobs" className="btn btn-primary">
+            Go to My Jobs
+          </a>
+        </div>
+      ) : applications.length > 0 ? (
         <div className="space-y-6">
           {applications.map((application) => (
             <div key={application.id} className="card">
@@ -64,7 +79,7 @@ const ViewCandidates = () => {
                       <h3 className="text-xl font-semibold text-gray-900">
                         {application.jobSeeker?.firstName} {application.jobSeeker?.lastName}
                       </h3>
-                      
+
                       <div className="mt-3 space-y-2 text-sm text-gray-600">
                         {application.jobSeeker?.user?.email && (
                           <div className="flex items-center">

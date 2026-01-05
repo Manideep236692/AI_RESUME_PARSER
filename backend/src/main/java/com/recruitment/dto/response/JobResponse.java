@@ -15,7 +15,7 @@ public class JobResponse {
     private UUID id;
     private String title;
     private String description;
-    private String requirements;
+    private java.util.List<String> requirements;
     private String location;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;

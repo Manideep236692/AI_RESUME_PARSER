@@ -189,13 +189,15 @@ public class AIIntegrationService {
         }
     }
 
-    public JsonNode screenCandidates(String jobRequirements, Map<String, JsonNode> candidateResumes) {
+    public JsonNode screenCandidates(java.util.List<String> jobRequirements, Map<String, JsonNode> candidateResumes) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             Map<String, Object> request = new HashMap<>();
-            request.put("jobRequirements", jobRequirements);
+            // Join list items with newline for AI service
+            String requirementsText = jobRequirements != null ? String.join("\n", jobRequirements) : "";
+            request.put("jobRequirements", requirementsText);
             request.put("candidates", candidateResumes);
 
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(request, headers);

@@ -111,6 +111,10 @@ public class SecurityConfig {
                     // Allow preflight requests
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
 
+                    // Public Auth Endpoints (Allow all methods for auth)
+                    auth.requestMatchers("/api/auth/**").permitAll();
+                    auth.requestMatchers("/error").permitAll();
+
                     // Public endpoints (GET)
                     for (String endpoint : publicEndpoints) {
                         auth.requestMatchers(HttpMethod.GET, endpoint).permitAll();

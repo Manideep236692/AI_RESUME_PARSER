@@ -25,6 +25,7 @@ import JobApplications from './components/jobseeker/JobApplications';
 
 // Recruiter Components
 import RecruiterDashboard from './components/recruiter/Dashboard';
+import RecruiterProfile from './components/recruiter/Profile';
 import PostJob from './components/recruiter/PostJob';
 import ManageJobs from './components/recruiter/ManageJobs';
 import ViewCandidates from './components/recruiter/ViewCandidates';
@@ -117,7 +118,7 @@ function AppContent() {
             } />
             <Route path="/recruiter/profile" element={
               <ProtectedRoute allowedRoles={['RECRUITER']}>
-                <RecruiterDashboard />
+                <RecruiterProfile />
               </ProtectedRoute>
             } />
             <Route path="/recruiter/post-job" element={

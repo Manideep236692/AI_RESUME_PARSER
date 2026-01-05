@@ -33,7 +33,7 @@ public class JobService {
         job.setSalaryMin(request.getSalaryMin());
         job.setSalaryMax(request.getSalaryMax());
         job.setJobType(request.getJobType());
-        job.setExpiryDate(request.getExpiryDate());
+        job.setExpiryDate(request.getExpiryDate().atStartOfDay());
         job.setIsActive(true);
 
         return jobPostingRepository.save(job);
@@ -85,7 +85,7 @@ public class JobService {
         job.setSalaryMin(request.getSalaryMin());
         job.setSalaryMax(request.getSalaryMax());
         job.setJobType(request.getJobType());
-        job.setExpiryDate(request.getExpiryDate());
+        job.setExpiryDate(request.getExpiryDate().atStartOfDay());
 
         return jobPostingRepository.save(job);
     }

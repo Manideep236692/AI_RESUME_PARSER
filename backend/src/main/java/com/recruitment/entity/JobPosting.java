@@ -37,7 +37,8 @@ public class JobPosting {
     private String description;
 
     @Column(columnDefinition = "jsonb")
-    private String requirements;
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    private java.util.List<String> requirements = new ArrayList<>();
 
     private String location;
 
@@ -60,9 +61,11 @@ public class JobPosting {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToMany(mappedBy = "jobPosting", cascade = CascadeType.ALL)
     private List<JobApplication> applications = new ArrayList<>();
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToMany(mappedBy = "jobPosting", cascade = CascadeType.ALL)
     private List<AIRecommendation> recommendations = new ArrayList<>();
 }

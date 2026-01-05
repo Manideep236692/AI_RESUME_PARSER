@@ -34,7 +34,18 @@ const PostJob = () => {
     setError('');
 
     try {
-      await createJob(formData);
+      // Convert requirements string to array
+      const requirementsArray = formData.requirements
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      const jobData = {
+        ...formData,
+        requirements: requirementsArray.length > 0 ? requirementsArray : null
+      };
+
+      await createJob(jobData);
       setSuccess(true);
       setTimeout(() => {
         navigate('/recruiter/jobs');

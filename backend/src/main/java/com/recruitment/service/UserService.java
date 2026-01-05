@@ -43,6 +43,20 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
 
+        if (request.getRole() == Role.JOB_SEEKER) {
+            String fullName = request.getFirstName() + " " + request.getLastName();
+            if (fullName.trim().isEmpty()) {
+                fullName = "Job Seeker";
+            }
+            user.setFullName(fullName);
+        } else if (request.getRole() == Role.RECRUITER) {
+            String fullName = request.getCompanyName();
+            if (fullName == null || fullName.trim().isEmpty()) {
+                fullName = "Recruiter";
+            }
+            user.setFullName(fullName);
+        }
+
         user = userRepository.save(user);
 
         if (request.getRole() == Role.JOB_SEEKER) {
@@ -52,12 +66,6 @@ public class UserService {
             jobSeeker.setLastName(request.getLastName());
             jobSeeker.setPhone(request.getPhone());
             jobSeeker.setLocation(request.getLocation());
-            jobSeeker.setPhone(request.getPhone());
-            jobSeeker.setLocation(request.getLocation());
-
-            // Set full name for User
-            user.setFullName(request.getFirstName() + " " + request.getLastName());
-            userRepository.save(user); // Update user with full name
 
             jobSeekerRepository.save(jobSeeker);
         } else if (request.getRole() == Role.RECRUITER) {
@@ -65,10 +73,8 @@ public class UserService {
             recruiter.setUser(user);
             recruiter.setCompanyName(request.getCompanyName());
             recruiter.setCompanyDescription(request.getCompanyDescription());
-
-            // Set full name for Recruiter as Company Name (fallback)
-            user.setFullName(request.getCompanyName());
             recruiter.setCompanySize(request.getCompanySize());
+
             recruiterRepository.save(recruiter);
         }
 
