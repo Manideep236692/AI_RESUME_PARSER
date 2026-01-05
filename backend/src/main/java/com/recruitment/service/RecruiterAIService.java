@@ -50,7 +50,7 @@ public class RecruiterAIService {
             // Filter resumes with parsed data and create a map of job seeker ID to resume
             // data
             Map<String, JsonNode> resumeDataMap = allResumes.stream()
-                    .filter(r -> r.getParsedData() != null)
+                    .filter(r -> r.getParsedData() != null && r.getJobSeeker() != null)
                     .collect(Collectors.toMap(
                             r -> r.getJobSeeker().getId().toString(),
                             Resume::getParsedData));
@@ -144,12 +144,16 @@ public class RecruiterAIService {
 
                 // Find the resume for this job seeker
                 Optional<Resume> resumeOpt = allResumes.stream()
-                        .filter(r -> r.getJobSeeker().getId().equals(jobSeekerId))
+                        .filter(r -> r.getJobSeeker() != null && r.getJobSeeker().getId().equals(jobSeekerId))
                         .findFirst();
 
                 if (resumeOpt.isPresent()) {
                     Resume resume = resumeOpt.get();
                     JobSeeker jobSeeker = resume.getJobSeeker();
+                    if (jobSeeker == null || jobSeeker.getUser() == null) {
+                        log.warn("Resume {} has null job seeker or user, skipping", resume.getId());
+                        continue;
+                    }
                     User user = jobSeeker.getUser();
 
                     CandidateScreeningResponse response = new CandidateScreeningResponse();

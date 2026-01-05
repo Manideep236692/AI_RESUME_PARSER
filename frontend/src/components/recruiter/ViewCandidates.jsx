@@ -16,7 +16,7 @@ const ViewCandidates = () => {
     } else {
       setLoading(false);
     }
-  }, [jobId]);
+  }, [jobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadApplications = async () => {
     try {

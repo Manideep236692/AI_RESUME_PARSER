@@ -36,6 +36,12 @@ public class ResumeService {
     @Transactional
     public Resume uploadResume(UUID userId, MultipartFile file) {
         try {
+            // Validate file size before processing (10MB limit)
+            long maxFileSize = 10 * 1024 * 1024; // 10MB
+            if (file.getSize() > maxFileSize) {
+                throw new RuntimeException("File size exceeds maximum limit of 10MB");
+            }
+
             JobSeeker jobSeeker = null;
             if (userId != null) {
                 try {
@@ -53,6 +59,9 @@ public class ResumeService {
 
             // Generate unique filename
             String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || originalFilename.trim().isEmpty()) {
+                throw new RuntimeException("File name cannot be empty");
+            }
             String filename = UUID.randomUUID().toString() + "_" + originalFilename;
             Path filePath = uploadPath.resolve(filename);
 
@@ -63,9 +72,15 @@ public class ResumeService {
             JsonNode parsedData = null;
             try {
                 parsedData = aiIntegrationService.parseResume(file);
+                if (parsedData == null || parsedData.isEmpty()) {
+                    log.warn("AI service returned empty or null parsed data, creating empty node");
+                    parsedData = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+                }
             } catch (Exception e) {
                 log.error("Failed to parse resume with AI service", e);
-                throw new RuntimeException("Failed to parse resume: " + e.getMessage(), e);
+                // Create empty parsed data instead of throwing exception to allow resume upload
+                parsedData = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+                log.info("Continuing with empty parsed data due to AI service failure");
             }
 
             // Only set existing resumes as non-primary if jobSeeker is not null
@@ -107,5 +122,49 @@ public class ResumeService {
 
     public Optional<Resume> findById(UUID resumeId) {
         return resumeRepository.findById(java.util.Objects.requireNonNull(resumeId));
+    }
+
+    @Transactional
+    public void deleteResume(UUID resumeId, UUID userId) {
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Resume not found"));
+
+        // Verify ownership
+        if (resume.getJobSeeker() != null && !resume.getJobSeeker().getUser().getId().equals(userId)) {
+            throw new RuntimeException("Unauthorized to delete this resume");
+        }
+
+        // Delete file from filesystem
+        try {
+            Path filePath = Paths.get(resume.getFilePath());
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete file from filesystem: " + resume.getFilePath(), e);
+        }
+
+        // Delete from database
+        resumeRepository.delete(resume);
+    }
+
+    @Transactional
+    public Resume setAsPrimary(UUID resumeId, UUID userId) {
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Resume not found"));
+
+        // Verify ownership
+        if (resume.getJobSeeker() == null || !resume.getJobSeeker().getUser().getId().equals(userId)) {
+            throw new RuntimeException("Unauthorized to update this resume");
+        }
+
+        // Set all other resumes as non-primary
+        List<Resume> allResumes = resumeRepository.findByJobSeekerId(resume.getJobSeeker().getId());
+        allResumes.forEach(r -> r.setIsPrimary(false));
+        resumeRepository.saveAll(allResumes);
+
+        // Set this resume as primary
+        resume.setIsPrimary(true);
+        return resumeRepository.save(resume);
     }
 }

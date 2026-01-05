@@ -23,17 +23,17 @@ import java.util.UUID;
 @RequestMapping("/api/recruiter")
 @RequiredArgsConstructor
 public class RecruiterController {
-    
+
     private final RecruiterService recruiterService;
     private final JobService jobService;
     private final ApplicationService applicationService;
-    
+
     @GetMapping("/profile")
     public ResponseEntity<Recruiter> getProfile(@AuthenticationPrincipal UserPrincipal userDetails) {
         Recruiter recruiter = recruiterService.getRecruiterByUserId(userDetails.getId());
         return ResponseEntity.ok(recruiter);
     }
-    
+
     @PutMapping("/profile")
     public ResponseEntity<Recruiter> updateProfile(
             @AuthenticationPrincipal UserPrincipal userDetails,
@@ -41,7 +41,7 @@ public class RecruiterController {
         Recruiter recruiter = recruiterService.updateProfile(userDetails.getId(), updatedProfile);
         return ResponseEntity.ok(recruiter);
     }
-    
+
     @PostMapping("/jobs")
     public ResponseEntity<JobPosting> createJob(
             @AuthenticationPrincipal UserPrincipal userDetails,
@@ -49,14 +49,14 @@ public class RecruiterController {
         JobPosting job = jobService.createJob(userDetails.getId(), request);
         return ResponseEntity.ok(job);
     }
-    
+
     @GetMapping("/jobs")
     public ResponseEntity<List<JobResponse>> getMyJobs(
             @AuthenticationPrincipal UserPrincipal userDetails) {
         List<JobResponse> jobs = jobService.getJobsByRecruiter(userDetails.getId());
         return ResponseEntity.ok(jobs);
     }
-    
+
     @PutMapping("/jobs/{jobId}")
     public ResponseEntity<JobPosting> updateJob(
             @PathVariable UUID jobId,
@@ -65,7 +65,7 @@ public class RecruiterController {
         JobPosting job = jobService.updateJob(jobId, userDetails.getId(), request);
         return ResponseEntity.ok(job);
     }
-    
+
     @DeleteMapping("/jobs/{jobId}")
     public ResponseEntity<MessageResponse> deleteJob(
             @PathVariable UUID jobId,
@@ -73,13 +73,13 @@ public class RecruiterController {
         jobService.deleteJob(jobId, userDetails.getId());
         return ResponseEntity.ok(new MessageResponse("Job deleted successfully"));
     }
-    
+
     @GetMapping("/jobs/{jobId}/applications")
     public ResponseEntity<List<JobApplication>> getJobApplications(@PathVariable UUID jobId) {
         List<JobApplication> applications = applicationService.getApplicationsForJob(jobId);
         return ResponseEntity.ok(applications);
     }
-    
+
     @PutMapping("/applications/{applicationId}/status")
     public ResponseEntity<JobApplication> updateApplicationStatus(
             @PathVariable UUID applicationId,

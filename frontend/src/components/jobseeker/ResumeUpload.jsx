@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { uploadResume, getResumes } from '../../services/api';
+import { uploadResume, getResumes, deleteResume, setResumeAsPrimary } from '../../services/api';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { Upload, FileText, CheckCircle, X } from 'lucide-react';
+import { Upload, FileText, CheckCircle, X, Trash2, Star, StarOff } from 'lucide-react';
 import { formatDate } from '../../utils/helpers';
 
 const ResumeUpload = () => {
@@ -11,6 +11,8 @@ const ResumeUpload = () => {
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+  const [settingPrimaryId, setSettingPrimaryId] = useState(null);
 
   useEffect(() => {
     loadResumes();
@@ -79,9 +81,50 @@ const ResumeUpload = () => {
       loadResumes();
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to upload resume');
+      const errorMessage = error.response?.data?.message || error.response?.data || error.message || 'Failed to upload resume';
+      setError(errorMessage);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDelete = async (resumeId) => {
+    if (!window.confirm('Are you sure you want to delete this resume? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingId(resumeId);
+    setError('');
+    setSuccess('');
+
+    try {
+      await deleteResume(resumeId);
+      setSuccess('Resume deleted successfully!');
+      loadResumes();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data || error.message || 'Failed to delete resume';
+      setError(errorMessage);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleSetPrimary = async (resumeId) => {
+    setSettingPrimaryId(resumeId);
+    setError('');
+    setSuccess('');
+
+    try {
+      await setResumeAsPrimary(resumeId);
+      setSuccess('Resume set as primary successfully!');
+      loadResumes();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data || error.message || 'Failed to set resume as primary';
+      setError(errorMessage);
+    } finally {
+      setSettingPrimaryId(null);
     }
   };
 
@@ -155,22 +198,62 @@ const ResumeUpload = () => {
                 key={resume.id}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors"
               >
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 flex-1">
                   <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
                     <FileText className="w-6 h-6 text-primary-600" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">{resume.fileName}</h3>
                     <p className="text-sm text-gray-600">
                       Uploaded on {formatDate(resume.uploadDate)}
                     </p>
                   </div>
                 </div>
-                {resume.isPrimary && (
-                  <span className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full font-medium">
-                    Primary
-                  </span>
-                )}
+                <div className="flex items-center space-x-2">
+                  {resume.isPrimary ? (
+                    <span className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full font-medium flex items-center">
+                      <Star className="w-3 h-3 mr-1 fill-current" />
+                      Primary
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleSetPrimary(resume.id)}
+                      disabled={settingPrimaryId === resume.id}
+                      className="btn btn-secondary text-xs px-3 py-1.5 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Set as primary resume"
+                    >
+                      {settingPrimaryId === resume.id ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-1"></div>
+                          <span className="ml-1">Setting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <StarOff className="w-3 h-3 mr-1" />
+                          Set Primary
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(resume.id)}
+                    disabled={deletingId === resume.id}
+                    className="btn btn-danger text-xs px-3 py-1.5 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Delete resume"
+                  >
+                    {deletingId === resume.id ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></div>
+                        <span className="ml-1">Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

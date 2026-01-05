@@ -110,4 +110,26 @@ public class JobSeekerController {
                 .getRecommendationsForJobSeeker(userDetails.getId());
         return ResponseEntity.ok(recommendations);
     }
+
+    @DeleteMapping("/resumes/{resumeId}")
+    public ResponseEntity<?> deleteResume(
+            @PathVariable UUID resumeId,
+            @AuthenticationPrincipal UserPrincipal userDetails) {
+        try {
+            resumeService.deleteResume(resumeId, userDetails.getId());
+            return ResponseEntity.ok().body("Resume deleted successfully");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body("Error deleting resume: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/resumes/{resumeId}/set-primary")
+    public ResponseEntity<Resume> setResumeAsPrimary(
+            @PathVariable UUID resumeId,
+            @AuthenticationPrincipal UserPrincipal userDetails) {
+        Resume resume = resumeService.setAsPrimary(resumeId, userDetails.getId());
+        return ResponseEntity.ok(resume);
+    }
 }

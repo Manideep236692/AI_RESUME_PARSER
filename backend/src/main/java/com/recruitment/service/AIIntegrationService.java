@@ -63,7 +63,8 @@ public class AIIntegrationService {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 return objectMapper.readTree(response.getBody());
             }
-            return null;
+            log.warn("AI service returned non-OK status or null body for resume parsing");
+            return objectMapper.createObjectNode();
 
         } catch (IOException e) {
             log.error("Error parsing resume with AI service", e);
@@ -86,15 +87,14 @@ public class AIIntegrationService {
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    aiServiceUrl + "/parse-resume",
+            ResponseEntity<String> response = restTemplate.exchange(
+                    aiServiceUrl + "/parse",
                     java.util.Objects.requireNonNull(HttpMethod.POST),
                     requestEntity,
-                    new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
-                    });
+                    String.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return objectMapper.writeValueAsString(response.getBody());
+                return response.getBody();
             }
 
             return null;

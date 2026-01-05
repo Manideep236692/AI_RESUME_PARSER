@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import json
 from datetime import datetime, timezone
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'

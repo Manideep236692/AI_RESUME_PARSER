@@ -33,7 +33,9 @@ public class JobService {
         job.setSalaryMin(request.getSalaryMin());
         job.setSalaryMax(request.getSalaryMax());
         job.setJobType(request.getJobType());
-        job.setExpiryDate(request.getExpiryDate().atStartOfDay());
+        if (request.getExpiryDate() != null) {
+            job.setExpiryDate(request.getExpiryDate().atStartOfDay());
+        }
         job.setIsActive(true);
 
         return jobPostingRepository.save(job);
@@ -74,7 +76,7 @@ public class JobService {
         JobPosting job = getJobById(jobId);
         Recruiter recruiter = recruiterService.getRecruiterByUserId(userId);
 
-        if (!job.getRecruiter().getId().equals(recruiter.getId())) {
+        if (job.getRecruiter() == null || !job.getRecruiter().getId().equals(recruiter.getId())) {
             throw new RuntimeException("Unauthorized to update this job");
         }
 
@@ -85,7 +87,9 @@ public class JobService {
         job.setSalaryMin(request.getSalaryMin());
         job.setSalaryMax(request.getSalaryMax());
         job.setJobType(request.getJobType());
-        job.setExpiryDate(request.getExpiryDate().atStartOfDay());
+        if (request.getExpiryDate() != null) {
+            job.setExpiryDate(request.getExpiryDate().atStartOfDay());
+        }
 
         return jobPostingRepository.save(job);
     }
@@ -95,7 +99,7 @@ public class JobService {
         JobPosting job = getJobById(jobId);
         Recruiter recruiter = recruiterService.getRecruiterByUserId(userId);
 
-        if (!job.getRecruiter().getId().equals(recruiter.getId())) {
+        if (job.getRecruiter() == null || !job.getRecruiter().getId().equals(recruiter.getId())) {
             throw new RuntimeException("Unauthorized to delete this job");
         }
 
@@ -115,8 +119,10 @@ public class JobService {
         response.setJobType(job.getJobType());
         response.setPostedDate(job.getPostedDate());
         response.setIsActive(job.getIsActive());
-        response.setCompanyName(job.getRecruiter().getCompanyName());
-        response.setRecruiterId(job.getRecruiter().getId());
+        if (job.getRecruiter() != null) {
+            response.setCompanyName(job.getRecruiter().getCompanyName());
+            response.setRecruiterId(job.getRecruiter().getId());
+        }
         return response;
     }
 }

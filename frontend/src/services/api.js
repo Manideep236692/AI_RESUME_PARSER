@@ -52,6 +52,8 @@ export const uploadResume = (file) => {
   });
 };
 export const getResumes = () => api.get('/jobseeker/resumes');
+export const deleteResume = (resumeId) => api.delete(`/jobseeker/resumes/${resumeId}`);
+export const setResumeAsPrimary = (resumeId) => api.put(`/jobseeker/resumes/${resumeId}/set-primary`);
 export const applyForJob = (data) => api.post('/jobseeker/apply', data);
 export const getApplications = () => api.get('/jobseeker/applications');
 export const getRecommendations = () => api.get('/jobseeker/recommendations');
