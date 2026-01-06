@@ -4,6 +4,13 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import json
+import joblib
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import PyPDF2
+import docx
+import re
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
