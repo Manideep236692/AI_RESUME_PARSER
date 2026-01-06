@@ -35,7 +35,9 @@ CREATE TABLE recruiters (
     company_description TEXT,
     company_size VARCHAR(50),
     company_website VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    industry VARCHAR(255),
+    location VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Resumes with AI parsed data
@@ -98,9 +100,12 @@ CREATE TABLE ai_recommendations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     job_seeker_id UUID REFERENCES job_seekers(id) ON DELETE CASCADE NOT NULL,
     job_posting_id UUID REFERENCES job_postings(id) ON DELETE CASCADE NOT NULL,
-    match_score DECIMAL(3,2),
-    recommendation_reason TEXT,
-    generated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    job_title VARCHAR(255),
+    company VARCHAR(255),
+    match_score DECIMAL(5,2),
+    reason TEXT,
+    raw_data TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     UNIQUE(job_seeker_id, job_posting_id)
 );
 
