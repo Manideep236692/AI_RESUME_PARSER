@@ -11,102 +11,43 @@ import numpy as np
 import PyPDF2
 import docx
 import re
+import traceback
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
 # Configuration
-# Load pre-trained model and dataset if available
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Global ML Models
 tfidf_vectorizer = None
 tfidf_matrix = None
 dataset_lookup = []
 
-try:
-    if os.path.exists('tfidf_model.pkl'):
-        tfidf_vectorizer = joblib.load('tfidf_model.pkl')
-        print("Loaded pre-trained TF-IDF model.")
-    
-    if os.path.exists('tfidf_matrix.pkl'):
-        tfidf_matrix = joblib.load('tfidf_matrix.pkl')
-        print("Loaded pre-trained TF-IDF matrix.")
-        
-    if os.path.exists('dataset_lookup.pkl'):
-        dataset_lookup = joblib.load('dataset_lookup.pkl')
-        print(f"Loaded dataset lookup with {len(dataset_lookup)} records.")
-        
-except Exception as e:
-    print(f"Error loading model/dataset: {e}")
-
-@app.route('/api/v1/search-candidate-pool', methods=['POST'])
-def search_candidate_pool():
-    """
-    Search against the 'Big Data' pool of 5000+ candidates
-    """
-    data = request.json
-    requirements = data.get('query', '') or data.get('jobRequirements', '')
-    top_k = data.get('top_k', 10)
-    
-    if not requirements or not tfidf_vectorizer or tfidf_matrix is None:
-        return jsonify({"results": [], "status": "error", "message": "Model not loaded or empty query"})
-        
+def load_models():
+    global tfidf_vectorizer, tfidf_matrix, dataset_lookup
     try:
-        # Transform query to vector
-        query_vec = tfidf_vectorizer.transform([requirements])
+        if os.path.exists('tfidf_model.pkl'):
+            tfidf_vectorizer = joblib.load('tfidf_model.pkl')
+            print("Loaded pre-trained TF-IDF model.")
         
-        # Calculate similarity against ALL 5000+ candidates
-        # This is linear algebra: (1, N) dot (N, M) -> (1, M) scores
-        similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
-        
-        # Get top K indices
-        top_indices = similarities.argsort()[-top_k:][::-1]
-        
-        results = []
-        for idx in top_indices:
-            score = float(similarities[idx])
-            record = dataset_lookup[idx]
+        if os.path.exists('tfidf_matrix.pkl'):
+            tfidf_matrix = joblib.load('tfidf_matrix.pkl')
+            print("Loaded pre-trained TF-IDF matrix.")
             
-            # Simple highlighting of matched terms
-            req_tokens = set(requirements.lower().split())
-            text_tokens = set(record['resume_text'].lower().split())
-            matched_terms = list(req_tokens.intersection(text_tokens))[:5]
-            
-            results.append({
-                "id": record['id'],
-                "role": record['role'],
-                "domain": record['domain'],
-                "experience": record['total_experience_years'],
-                "education": record['education_level'],
-                "matchScore": round(score * 100, 1), # Percentage
-                "preview": record['resume_text'][:200] + "...",
-                "matchedTerms": matched_terms,
-                "skills": record['skills'][:5] # Show top 5 skills
-            })
-            
-        return jsonify({
-            "results": results, 
-            "total_pool_size": len(dataset_lookup),
-            "status": "success"
-        })
-        
+        if os.path.exists('dataset_lookup.pkl'):
+            dataset_lookup = joblib.load('dataset_lookup.pkl')
+            print(f"Loaded dataset lookup with {len(dataset_lookup)} records.")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
+        print(f"Error loading model/dataset: {e}")
 
-# Create uploads directory if it doesn't exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+load_models()
 
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-import PyPDF2
-import docx
-import re
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def extract_text_from_pdf(filepath):
     text = ""
@@ -135,44 +76,35 @@ def extract_email(text):
     return match.group(0) if match else None
 
 def extract_phone(text):
-    # Basic phone pattern covering common formats
     phone_pattern = r'(\+\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}'
     match = re.search(phone_pattern, text)
     return match.group(0) if match else None
 
 def extract_skills(text):
-    # Common skills to look for
     common_skills = [
         "Java", "Python", "C++", "JavaScript", "React", "Angular", "Vue",
         "Spring Boot", "Node.js", "Django", "Flask", "SQL", "NoSQL",
         "MongoDB", "PostgreSQL", "AWS", "Azure", "Docker", "Kubernetes",
         "Git", "Rest API", "GraphQL", "HTML", "CSS", "TypeScript"
     ]
-    
     found_skills = []
     text_lower = text.lower()
     for skill in common_skills:
         if re.search(r'\b' + re.escape(skill.lower()) + r'\b', text_lower):
             found_skills.append(skill)
-            
-    return list(set(found_skills)) # Deduplicate
+    return list(set(found_skills))
 
 def extract_text_from_resume(file_path):
     ext = file_path.rsplit('.', 1)[1].lower()
     text = ""
-    
     if ext == 'pdf':
         text = extract_text_from_pdf(file_path)
     elif ext in ['doc', 'docx']:
         text = extract_text_from_docx(file_path)
-        
-    # Extract details using regex/logic on 'text'
+    
     email = extract_email(text)
     phone = extract_phone(text)
     skills = extract_skills(text)
-    
-    # Try to extract name (very basic heuristic: first line or near email)
-    # This is a simple fallback.
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     name = lines[0] if lines else "Unknown Candidate"
     
@@ -181,47 +113,10 @@ def extract_text_from_resume(file_path):
         "email": email if email else "Not Found",
         "phone": phone if phone else "Not Found",
         "skills": skills,
-        "experience": [], # Complex to extract reliably with regex alone
-        "education": [],   # Complex to extract reliably with regex alone
-        "raw_text_preview": text[:500] # For debugging
+        "experience": [],
+        "education": [],
+        "raw_text_preview": text[:500]
     }
-
-@app.route('/api/v1/parse', methods=['POST'])
-def parse_resume():
-    if 'resume' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    
-    file = request.files['resume']
-    
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        
-        try:
-            # Process the resume
-            result = extract_text_from_resume(filepath)
-            
-            # Add metadata
-            result.update({
-                "parsed_at": datetime.now(timezone.utc).isoformat(),
-                "original_filename": filename,
-                "file_size": os.path.getsize(filepath),
-                "status": "success"
-            })
-            
-            return jsonify(result)
-            
-        except Exception as e:
-            return jsonify({
-                "error": f"Error processing file: {str(e)}",
-                "status": "error"
-            }), 500
-    
-    return jsonify({"error": "File type not allowed"}), 400
 
 @app.route('/api/v1/health', methods=['GET'])
 def health_check():
@@ -231,16 +126,78 @@ def health_check():
         "service": "resume-parser"
     })
 
+@app.route('/api/v1/parse', methods=['POST'])
+def parse_resume():
+    if 'resume' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['resume']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        try:
+            result = extract_text_from_resume(filepath)
+            result.update({
+                "parsed_at": datetime.now(timezone.utc).isoformat(),
+                "original_filename": filename,
+                "file_size": os.path.getsize(filepath),
+                "status": "success"
+            })
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({"error": str(e), "status": "error"}), 500
+    return jsonify({"error": "File type not allowed"}), 400
+
+@app.route('/api/v1/search-candidate-pool', methods=['POST'])
+def search_candidate_pool():
+    data = request.json
+    requirements = data.get('query', '') or data.get('jobRequirements', '')
+    top_k = data.get('top_k', 10)
+    
+    if not requirements or not tfidf_vectorizer or tfidf_matrix is None:
+        return jsonify({"results": [], "status": "error", "message": "Model not loaded or empty query"})
+    
+    try:
+        query_vec = tfidf_vectorizer.transform([requirements])
+        similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
+        top_indices = similarities.argsort()[-top_k:][::-1]
+        
+        results = []
+        for idx in top_indices:
+            score = float(similarities[idx])
+            record = dataset_lookup[idx]
+            req_tokens = set(requirements.lower().split())
+            text_tokens = set(record['resume_text'].lower().split())
+            matched_terms = list(req_tokens.intersection(text_tokens))[:5]
+            results.append({
+                "id": record['id'],
+                "role": record['role'],
+                "domain": record['domain'],
+                "experience": record['total_experience_years'],
+                "education": record['education_level'],
+                "matchScore": round(score * 100, 1),
+                "preview": record['resume_text'][:200] + "...",
+                "matchedTerms": matched_terms,
+                "skills": record['skills'][:5]
+            })
+        return jsonify({
+            "results": results, 
+            "total_pool_size": len(dataset_lookup),
+            "status": "success"
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/v1/recommend-jobs', methods=['POST'])
 def recommend_jobs():
     data = request.json
     resume_data = data.get('resumeData', {})
     skills = set(s.lower() for s in resume_data.get('skills', []))
-    
     recommendations = []
     
-    # Simple rule-based recommendations
     if 'java' in skills or 'spring boot' in skills:
         recommendations.append({
             "title": "Senior Java Developer",
@@ -248,7 +205,6 @@ def recommend_jobs():
             "score": 0.95,
             "reason": "Strong match with Java and Spring Boot experience"
         })
-    
     if 'python' in skills or 'flask' in skills or 'django' in skills:
         recommendations.append({
             "title": "Python Backend Engineer",
@@ -256,7 +212,6 @@ def recommend_jobs():
             "score": 0.92,
             "reason": "Good fit for Python-based microservices role"
         })
-        
     if 'react' in skills or 'javascript' in skills:
         recommendations.append({
             "title": "Frontend Developer",
@@ -264,8 +219,6 @@ def recommend_jobs():
             "score": 0.88,
             "reason": "Matches frontend skill requirement"
         })
-
-    # Default recommendation if no skills matched specific rules
     if not recommendations:
         recommendations.append({
             "title": "Software Engineer",
@@ -273,12 +226,10 @@ def recommend_jobs():
             "score": 0.75,
             "reason": "General match based on profile"
         })
-
     return jsonify({"jobs": recommendations})
 
 @app.route('/api/v1/skill-gap-analysis', methods=['POST'])
 def skill_gap_analysis():
-    # Note: Backend only sends ID, not requirements. Mocking results.
     return jsonify({
         "missingSkills": ["Cloud Architecture", "System Design"],
         "matchingSkills": ["Java", "Spring Boot", "SQL"],
@@ -310,100 +261,51 @@ def career_path_suggestions():
         ]
     })
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
-import joblib
-
-# Load pre-trained model if available
-tfidf_vectorizer = None
-try:
-    if os.path.exists('tfidf_model.pkl'):
-        tfidf_vectorizer = joblib.load('tfidf_model.pkl')
-        print("Loaded pre-trained TF-IDF model.")
-    else:
-        print("Pre-trained model not found. Using dynamic vectorization.")
-except Exception as e:
-    print(f"Error loading model: {e}")
-
 @app.route('/api/v1/screen-candidates', methods=['POST'])
 def screen_candidates():
     data = request.json
     requirements = data.get('jobRequirements', '')
     candidates = data.get('candidates', {})
-    
-    results = {}
-    
     if not candidates:
         return jsonify({})
-
-    # Prepare corpus: Job Requirements is the first document
+    
     documents = [requirements]
     candidate_ids = []
-    
-    # Add each candidate's skills/text to the documents list
     for cid, cdata in candidates.items():
-        # Combine skills into a single string representation
-        # Ideally we'd use the full resume text if available, but skills are a good proxy
         skills_text = " ".join(cdata.get('skills', []))
         documents.append(skills_text)
         candidate_ids.append(cid)
     
     try:
-        # TF-IDF Vectorization
         global tfidf_vectorizer
-        
         if tfidf_vectorizer:
-            # Use pre-trained model (transform only)
-            tfidf_matrix = tfidf_vectorizer.transform(documents)
+            matrix = tfidf_vectorizer.transform(documents)
         else:
-            # Fallback to dynamic fitting if no model
             temp_vectorizer = TfidfVectorizer(stop_words='english')
-            tfidf_matrix = temp_vectorizer.fit_transform(documents)
+            matrix = temp_vectorizer.fit_transform(documents)
         
-        # Calculate Cosine Similarity
-        # cosine_similarity(job_vector, candidate_vectors)
-        # tfidf_matrix[0:1] is the job vector
-        # tfidf_matrix[1:] are the candidate vectors
-        job_vector = tfidf_matrix[0:1]
-        candidate_vectors = tfidf_matrix[1:]
-        
+        job_vector = matrix[0:1]
+        candidate_vectors = matrix[1:]
         similarities = cosine_similarity(job_vector, candidate_vectors).flatten()
         
-        # Format results
+        results = {}
         for idx, score in enumerate(similarities):
-            # Scale score to 0-10 or 0-100%
-            # Cosine similarity is 0 to 1
-            scaled_score = round(float(score) * 10, 1) # 0-10 scale
-            
-            # Additional heuristic: If score is too low but some keywords match, boost slightly
-            # (TF-IDF can sometimes be harsh on short implementations)
-            if scaled_score < 1.0:
-                 scaled_score = 1.0 # Minimum baseline
-                 
+            scaled_score = round(float(score) * 10, 1)
+            if scaled_score < 1.0: scaled_score = 1.0
             cid = candidate_ids[idx]
             original_skills = candidates[cid].get('skills', [])
-            
-            # Extract basic strengths (simple intersection for display purposes)
-             # Note: This is separate from the vector score just for UI 'reasons'
             req_words = set(requirements.lower().replace(',', ' ').split())
             matching_skills = [s for s in original_skills if s.lower() in req_words]
-            
             results[cid] = {
-                "matchScore": scaled_score, # RecruiterAIService expects "matchScore" inside the object
-                "strengths": matching_skills[:3], # Show top 3 matching skills
+                "matchScore": scaled_score,
+                "strengths": matching_skills[:3],
                 "weaknesses": ["Skill gaps identified via TF-IDF analysis"],
-                "culturalFitScore": round(np.random.uniform(7.0, 9.5), 1) # Simulation for now
+                "culturalFitScore": round(np.random.uniform(7.0, 9.5), 1)
             }
-
+        return jsonify(results)
     except Exception as e:
-        print(f"Error in TF-IDF: {e}")
-        # Fallback to empty or basic logic if ML fails
-        import traceback
         traceback.print_exc()
         return jsonify({})
-        
-    return jsonify(results)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
