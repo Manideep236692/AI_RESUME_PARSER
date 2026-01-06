@@ -57,7 +57,7 @@ public class RecruiterAIService {
 
             // Use AI to screen candidates
             JsonNode screeningResults = aiIntegrationService.screenCandidates(
-                    jobPosting.getRequirements(),
+                    convertRequirementsToList(jobPosting.getRequirements()),
                     resumeDataMap);
 
             // Process and return results
@@ -67,6 +67,26 @@ public class RecruiterAIService {
             log.error("Error screening candidates for job " + jobPostingId, e);
             throw new RuntimeException("Error screening candidates: " + e.getMessage(), e);
         }
+    }
+
+    private List<String> convertRequirementsToList(JsonNode requirements) {
+        if (requirements == null || requirements.isNull()) {
+            return Collections.emptyList();
+        }
+        List<String> list = new ArrayList<>();
+        if (requirements.isArray()) {
+            requirements.forEach(node -> list.add(node.asText()));
+        } else if (requirements.isObject() && requirements.has("skills")) {
+            JsonNode skills = requirements.get("skills");
+            if (skills.isArray()) {
+                skills.forEach(node -> list.add(node.asText()));
+            } else {
+                list.add(skills.asText());
+            }
+        } else {
+            list.add(requirements.asText());
+        }
+        return list;
     }
 
     /**

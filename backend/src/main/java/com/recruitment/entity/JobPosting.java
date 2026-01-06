@@ -38,8 +38,9 @@ public class JobPosting {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    @Column(columnDefinition = "TEXT")
-    private String requirements;
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "requirements")
+    private com.fasterxml.jackson.databind.JsonNode requirements;
 
     private String location;
 

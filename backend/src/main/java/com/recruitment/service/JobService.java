@@ -19,6 +19,7 @@ public class JobService {
 
     private final JobPostingRepository jobPostingRepository;
     private final RecruiterService recruiterService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     @Transactional
     public JobPosting createJob(UUID userId, JobPostRequest request) {
@@ -28,7 +29,9 @@ public class JobService {
         job.setRecruiter(recruiter);
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
-        job.setRequirements(request.getRequirements());
+        if (request.getRequirements() != null) {
+            job.setRequirements(objectMapper.valueToTree(request.getRequirements()));
+        }
         job.setLocation(request.getLocation());
         job.setSalaryMin(request.getSalaryMin());
         job.setSalaryMax(request.getSalaryMax());
@@ -82,7 +85,9 @@ public class JobService {
 
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
-        job.setRequirements(request.getRequirements());
+        if (request.getRequirements() != null) {
+            job.setRequirements(objectMapper.valueToTree(request.getRequirements()));
+        }
         job.setLocation(request.getLocation());
         job.setSalaryMin(request.getSalaryMin());
         job.setSalaryMax(request.getSalaryMax());

@@ -15,7 +15,7 @@ public class JobResponse {
     private UUID id;
     private String title;
     private String description;
-    private String requirements;
+    private com.fasterxml.jackson.databind.JsonNode requirements;
     private String location;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
