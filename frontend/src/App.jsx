@@ -76,8 +76,17 @@ function AppContent() {
           <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
-              <Route path="/jobs" element={<JobSearch />} />
-              <Route path="/jobs/:id" element={<JobDetails />} />
+              {/* Protected Public Routes */}
+              <Route path="/jobs" element={
+                <ProtectedRoute>
+                  <JobSearch />
+                </ProtectedRoute>
+              } />
+              <Route path="/jobs/:id" element={
+                <ProtectedRoute>
+                  <JobDetails />
+                </ProtectedRoute>
+              } />
 
 
             {/* Auth Routes */}
