@@ -111,6 +111,17 @@ public class JobSeekerController {
         return ResponseEntity.ok(recommendations);
     }
 
+    @GetMapping("/skill-gap/{jobPostingId}")
+    public ResponseEntity<?> getSkillGapAnalysis(
+            @AuthenticationPrincipal UserPrincipal userDetails,
+            @PathVariable UUID jobPostingId) {
+        try {
+            return ResponseEntity.ok(recommendationService.getSkillGapAnalysis(userDetails.getId(), jobPostingId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/resumes/{resumeId}")
     public ResponseEntity<?> deleteResume(
             @PathVariable UUID resumeId,

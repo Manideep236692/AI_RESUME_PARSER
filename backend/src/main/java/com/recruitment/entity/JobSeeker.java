@@ -45,10 +45,12 @@ public class JobSeeker {
     @Column(columnDefinition = "TEXT")
     private String summary;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToMany(mappedBy = "jobSeeker", cascade = CascadeType.ALL, orphanRemoval = true)
     @lombok.ToString.Exclude
     private List<Resume> resumes = new ArrayList<>();
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToMany(mappedBy = "jobSeeker", cascade = CascadeType.ALL)
     @lombok.ToString.Exclude
     private List<JobApplication> applications = new ArrayList<>();

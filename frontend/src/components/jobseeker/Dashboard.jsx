@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { getRecommendations, getApplications } from '../../services/api';
 import LoadingSpinner from '../common/LoadingSpinner';
 import JobCard from '../jobs/JobCard';
-import { Briefcase, FileText, TrendingUp } from 'lucide-react';
+import SkillAnalysis from './SkillAnalysis';
+import { Briefcase, FileText, TrendingUp, Sparkles } from 'lucide-react';
 
 const Dashboard = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedJobForAnalysis, setSelectedJobForAnalysis] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -22,6 +24,11 @@ const Dashboard = () => {
       ]);
       setRecommendations(recsResponse.data);
       setApplications(appsResponse.data);
+      
+      // Auto-select first recommendation for analysis if available
+      if (recsResponse.data.length > 0 && recsResponse.data[0].job?.id) {
+        setSelectedJobForAnalysis(recsResponse.data[0]);
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -79,82 +86,102 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* AI Recommended Jobs */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">AI Recommended Jobs For You</h2>
-          <Link to="/jobs" className="text-primary-600 hover:text-primary-700 font-medium">
-            View all jobs →
-          </Link>
-        </div>
-
-        {recommendations.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recommendations.slice(0, 6).map((rec) => (
-              <div key={rec.id} className="relative">
-                <div className="absolute top-2 right-2 z-10">
-                  <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                    {Math.round(rec.matchScore * 100)}% Match
-                  </span>
-                </div>
-                <JobCard job={rec.job} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* AI Skill Analysis */}
+          {selectedJobForAnalysis && (
+            <section>
+              <div className="flex items-center space-x-2 mb-4">
+                <Sparkles className="w-5 h-5 text-primary-600" />
+                <h2 className="text-2xl font-bold text-gray-900">AI Career Insights</h2>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="card text-center py-12">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No recommendations yet</h3>
-            <p className="text-gray-600 mb-4">Upload your resume to get personalized job recommendations</p>
-            <Link to="/jobseeker/resume" className="btn btn-primary">
-              Upload Resume
-            </Link>
-          </div>
-        )}
-      </div>
+              <SkillAnalysis 
+                jobPostingId={selectedJobForAnalysis.job?.id} 
+                jobTitle={selectedJobForAnalysis.job?.title} 
+              />
+            </section>
+          )}
 
-      {/* Recent Applications */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Recent Applications</h2>
-          <Link to="/jobseeker/applications" className="text-primary-600 hover:text-primary-700 font-medium">
-            View all →
-          </Link>
+          {/* AI Recommended Jobs */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">AI Recommended Jobs For You</h2>
+              <Link to="/jobs" className="text-primary-600 hover:text-primary-700 font-medium text-sm">
+                View all →
+              </Link>
+            </div>
+
+            {recommendations.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {recommendations.slice(0, 4).map((rec) => (
+                  <div 
+                    key={rec.id} 
+                    className={`relative cursor-pointer transition-all ${selectedJobForAnalysis?.id === rec.id ? 'ring-2 ring-primary-500 rounded-xl' : ''}`}
+                    onClick={() => setSelectedJobForAnalysis(rec)}
+                  >
+                    <div className="absolute top-2 right-2 z-10">
+                      <span className="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        {Math.round(rec.matchScore * 100)}% Match
+                      </span>
+                    </div>
+                    <JobCard job={rec.job} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="card text-center py-12">
+                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No recommendations yet</h3>
+                <p className="text-gray-600 mb-4">Upload your resume to get personalized job recommendations</p>
+                <Link to="/jobseeker/resume" className="btn btn-primary">
+                  Upload Resume
+                </Link>
+              </div>
+            )}
+          </section>
         </div>
 
-        {applications.length > 0 ? (
-          <div className="card">
-            <div className="space-y-4">
-              {applications.slice(0, 5).map((app) => (
-                <div key={app.id} className="flex items-center justify-between py-3 border-b last:border-b-0">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{app.jobPosting?.title}</h3>
-                    <p className="text-sm text-gray-600">{app.jobPosting?.location}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      app.status === 'SHORTLISTED' ? 'bg-green-100 text-green-800' :
-                      app.status === 'VIEWED' ? 'bg-blue-100 text-blue-800' :
-                      app.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {app.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+        {/* Sidebar */}
+        <div className="space-y-8">
+          {/* Recent Applications */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Recent Applications</h2>
+              <Link to="/jobseeker/applications" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                View all
+              </Link>
             </div>
-          </div>
-        ) : (
-          <div className="card text-center py-12">
-            <Briefcase className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No applications yet</h3>
-            <p className="text-gray-600 mb-4">Start applying to jobs that match your skills</p>
-            <Link to="/jobs" className="btn btn-primary">
-              Browse Jobs
-            </Link>
-          </div>
-        )}
+
+            {applications.length > 0 ? (
+              <div className="card p-0 overflow-hidden">
+                <div className="divide-y divide-gray-100">
+                  {applications.slice(0, 5).map((app) => (
+                    <div key={app.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-gray-900 text-sm truncate">{app.jobPosting?.title}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          app.status === 'SHORTLISTED' ? 'bg-green-100 text-green-800' :
+                          app.status === 'VIEWED' ? 'bg-blue-100 text-blue-800' :
+                          app.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {app.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">{app.jobPosting?.location}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="card text-center py-8">
+                <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm text-gray-500">No applications yet</p>
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

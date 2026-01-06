@@ -47,6 +47,7 @@ public class Recruiter {
     @Column(name = "location")
     private String location;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToMany(mappedBy = "recruiter", cascade = CascadeType.ALL)
     private List<JobPosting> jobPostings = new ArrayList<>();
 

@@ -57,6 +57,7 @@ export const setResumeAsPrimary = (resumeId) => api.put(`/jobseeker/resumes/${re
 export const applyForJob = (data) => api.post('/jobseeker/apply', data);
 export const getApplications = () => api.get('/jobseeker/applications');
 export const getRecommendations = () => api.get('/jobseeker/recommendations');
+export const getSkillGapAnalysis = (jobId) => api.get(`/jobseeker/skill-gap/${jobId}`);
 
 // Recruiter APIs
 export const getRecruiterProfile = () => api.get('/recruiter/profile');
