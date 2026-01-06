@@ -1,0 +1,9 @@
+{
+  "projectId": "540544d5-b1f0-49b0-873c-aa460434fd78",
+  "createdAt": 1767685894669,
+  "startupCommands": [
+    "cd ai-service && python app.py",
+    "mvn -f backend/pom.xml spring-boot:run",
+    "cd frontend && bun run dev"
+  ]
+}
