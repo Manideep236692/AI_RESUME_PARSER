@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getRecruiterJobs } from '../../services/api';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { Briefcase, Users, Eye, PlusCircle } from 'lucide-react';
+import { Briefcase, Users, Eye, PlusCircle, Zap } from 'lucide-react';
 
 const Dashboard = () => {
   const [jobs, setJobs] = useState([]);
@@ -83,6 +83,16 @@ const Dashboard = () => {
             </div>
           </div>
         </Link>
+
+        {/* New Sourcing Card */}
+        <Link to="/recruiter/sourcing" className="card hover:shadow-lg transition-shadow cursor-pointer bg-yellow-50 border-2 border-yellow-200 col-span-1 md:col-span-4 lg:col-span-1">
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Zap className="w-12 h-12 text-yellow-600 mx-auto mb-2" />
+              <p className="text-yellow-700 font-semibold">AI Sourcing (25k Candidates)</p>
+            </div>
+          </div>
+        </Link>
       </div>
 
       {/* Recent Jobs */}
@@ -102,9 +112,8 @@ const Dashboard = () => {
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
                       <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        job.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${job.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
                         {job.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </div>

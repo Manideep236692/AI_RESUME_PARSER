@@ -126,7 +126,7 @@ public class ResumeService {
 
     @Transactional
     public void deleteResume(UUID resumeId, UUID userId) {
-        Resume resume = resumeRepository.findById(resumeId)
+        Resume resume = resumeRepository.findById(java.util.Objects.requireNonNull(resumeId))
                 .orElseThrow(() -> new ResourceNotFoundException("Resume not found"));
 
         // Verify ownership
@@ -150,7 +150,7 @@ public class ResumeService {
 
     @Transactional
     public Resume setAsPrimary(UUID resumeId, UUID userId) {
-        Resume resume = resumeRepository.findById(resumeId)
+        Resume resume = resumeRepository.findById(java.util.Objects.requireNonNull(resumeId))
                 .orElseThrow(() -> new ResourceNotFoundException("Resume not found"));
 
         // Verify ownership

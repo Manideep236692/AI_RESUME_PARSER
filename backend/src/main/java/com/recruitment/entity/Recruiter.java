@@ -41,6 +41,12 @@ public class Recruiter {
     @Column(name = "company_website")
     private String companyWebsite;
 
+    @Column(name = "industry")
+    private String industry;
+
+    @Column(name = "location")
+    private String location;
+
     @OneToMany(mappedBy = "recruiter", cascade = CascadeType.ALL)
     private List<JobPosting> jobPostings = new ArrayList<>();
 

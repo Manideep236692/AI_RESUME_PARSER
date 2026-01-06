@@ -44,7 +44,7 @@ export const uploadResume = (file) => {
   const formData = new FormData();
   formData.append('file', file);
   return api.post('/jobseeker/resume/upload', formData, {
-    headers: { 
+    headers: {
       'Content-Type': 'multipart/form-data',
       'Accept': 'application/json'
     },
@@ -62,18 +62,19 @@ export const getRecommendations = () => api.get('/jobseeker/recommendations');
 export const getRecruiterProfile = () => api.get('/recruiter/profile');
 export const updateRecruiterProfile = (data) => api.put('/recruiter/profile', data);
 export const createJob = (data) => api.post('/recruiter/jobs', data);
+export const searchCandidatePool = (query) => api.post('/recruiter/search-candidates', { query });
 export const getRecruiterJobs = () => api.get('/recruiter/jobs');
 export const updateJob = (jobId, data) => api.put(`/recruiter/jobs/${jobId}`, data);
 export const deleteJob = (jobId) => api.delete(`/recruiter/jobs/${jobId}`);
 export const getJobApplications = (jobId) => api.get(`/recruiter/jobs/${jobId}/applications`);
-export const updateApplicationStatus = (applicationId, status) => 
+export const updateApplicationStatus = (applicationId, status) =>
   api.put(`/recruiter/applications/${applicationId}/status`, null, { params: { status } });
 
 // Public Job APIs
 export const getAllJobs = () => api.get('/jobs/all');
 export const getJobById = (jobId) => api.get(`/jobs/${jobId}`);
 export const searchJobs = (keyword) => api.get('/jobs/search', { params: { keyword } });
-export const filterJobs = (location, jobType) => 
+export const filterJobs = (location, jobType) =>
   api.get('/jobs/filter', { params: { location, jobType } });
 
 export default api;

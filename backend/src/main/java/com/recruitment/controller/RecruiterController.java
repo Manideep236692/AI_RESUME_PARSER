@@ -87,4 +87,18 @@ public class RecruiterController {
         JobApplication application = applicationService.updateApplicationStatus(applicationId, status);
         return ResponseEntity.ok(application);
     }
+
+    @PostMapping("/search-candidates")
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> searchGlobalCandidates(
+            @AuthenticationPrincipal UserPrincipal userDetails,
+            @RequestBody java.util.Map<String, String> searchRequest) {
+
+        String query = searchRequest.get("query");
+        if (query == null || query.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        com.fasterxml.jackson.databind.JsonNode results = recruiterService.searchCandidatePool(query);
+        return ResponseEntity.ok(results);
+    }
 }

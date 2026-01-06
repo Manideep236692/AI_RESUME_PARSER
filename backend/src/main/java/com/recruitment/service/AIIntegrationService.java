@@ -218,4 +218,32 @@ public class AIIntegrationService {
             return objectMapper.createObjectNode();
         }
     }
+
+    public JsonNode searchCandidatePool(String query) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("query", query);
+            request.put("top_k", 20); // Get top 20 results
+
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(request, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    aiServiceUrl + "/search-candidate-pool",
+                    requestEntity,
+                    String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return objectMapper.readTree(response.getBody());
+            }
+
+            return objectMapper.createObjectNode();
+
+        } catch (Exception e) {
+            log.error("Error calling AI service for global candidate search", e);
+            return objectMapper.createObjectNode();
+        }
+    }
 }

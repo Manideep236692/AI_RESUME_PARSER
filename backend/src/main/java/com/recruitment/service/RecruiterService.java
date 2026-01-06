@@ -13,6 +13,7 @@ import java.util.UUID;
 public class RecruiterService {
 
     private final RecruiterRepository recruiterRepository;
+    private final AIIntegrationService aiIntegrationService;
 
     public Recruiter getRecruiterByUserId(UUID userId) {
         return recruiterRepository.findByUserId(userId)
@@ -25,14 +26,19 @@ public class RecruiterService {
     }
 
     @Transactional
-    public Recruiter updateProfile(UUID userId, Recruiter updatedProfile) {
-        Recruiter recruiter = getRecruiterByUserId(userId);
+    public Recruiter updateProfile(UUID userId, Recruiter updatedRecruiter) {
+        Recruiter existingRecruiter = getRecruiterByUserId(userId);
 
-        recruiter.setCompanyName(updatedProfile.getCompanyName());
-        recruiter.setCompanyDescription(updatedProfile.getCompanyDescription());
-        recruiter.setCompanySize(updatedProfile.getCompanySize());
-        recruiter.setCompanyWebsite(updatedProfile.getCompanyWebsite());
+        existingRecruiter.setCompanyName(updatedRecruiter.getCompanyName());
+        existingRecruiter.setCompanyWebsite(updatedRecruiter.getCompanyWebsite());
+        existingRecruiter.setCompanyDescription(updatedRecruiter.getCompanyDescription());
+        existingRecruiter.setIndustry(updatedRecruiter.getIndustry());
+        existingRecruiter.setLocation(updatedRecruiter.getLocation());
 
-        return recruiterRepository.save(recruiter);
+        return recruiterRepository.save(existingRecruiter); // User is cascaded
+    }
+
+    public com.fasterxml.jackson.databind.JsonNode searchCandidatePool(String query) {
+        return aiIntegrationService.searchCandidatePool(query);
     }
 }

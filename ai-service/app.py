@@ -1,14 +1,90 @@
+from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import json
-from datetime import datetime, timezone
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Configuration
+# Load pre-trained model and dataset if available
+tfidf_vectorizer = None
+tfidf_matrix = None
+dataset_lookup = []
+
+try:
+    if os.path.exists('tfidf_model.pkl'):
+        tfidf_vectorizer = joblib.load('tfidf_model.pkl')
+        print("Loaded pre-trained TF-IDF model.")
+    
+    if os.path.exists('tfidf_matrix.pkl'):
+        tfidf_matrix = joblib.load('tfidf_matrix.pkl')
+        print("Loaded pre-trained TF-IDF matrix.")
+        
+    if os.path.exists('dataset_lookup.pkl'):
+        dataset_lookup = joblib.load('dataset_lookup.pkl')
+        print(f"Loaded dataset lookup with {len(dataset_lookup)} records.")
+        
+except Exception as e:
+    print(f"Error loading model/dataset: {e}")
+
+@app.route('/api/v1/search-candidate-pool', methods=['POST'])
+def search_candidate_pool():
+    """
+    Search against the 'Big Data' pool of 5000+ candidates
+    """
+    data = request.json
+    requirements = data.get('query', '') or data.get('jobRequirements', '')
+    top_k = data.get('top_k', 10)
+    
+    if not requirements or not tfidf_vectorizer or tfidf_matrix is None:
+        return jsonify({"results": [], "status": "error", "message": "Model not loaded or empty query"})
+        
+    try:
+        # Transform query to vector
+        query_vec = tfidf_vectorizer.transform([requirements])
+        
+        # Calculate similarity against ALL 5000+ candidates
+        # This is linear algebra: (1, N) dot (N, M) -> (1, M) scores
+        similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
+        
+        # Get top K indices
+        top_indices = similarities.argsort()[-top_k:][::-1]
+        
+        results = []
+        for idx in top_indices:
+            score = float(similarities[idx])
+            record = dataset_lookup[idx]
+            
+            # Simple highlighting of matched terms
+            req_tokens = set(requirements.lower().split())
+            text_tokens = set(record['resume_text'].lower().split())
+            matched_terms = list(req_tokens.intersection(text_tokens))[:5]
+            
+            results.append({
+                "id": record['id'],
+                "role": record['role'],
+                "domain": record['domain'],
+                "experience": record['total_experience_years'],
+                "education": record['education_level'],
+                "matchScore": round(score * 100, 1), # Percentage
+                "preview": record['resume_text'][:200] + "...",
+                "matchedTerms": matched_terms,
+                "skills": record['skills'][:5] # Show top 5 skills
+            })
+            
+        return jsonify({
+            "results": results, 
+            "total_pool_size": len(dataset_lookup),
+            "status": "success"
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
 
@@ -230,6 +306,18 @@ def career_path_suggestions():
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import joblib
+
+# Load pre-trained model if available
+tfidf_vectorizer = None
+try:
+    if os.path.exists('tfidf_model.pkl'):
+        tfidf_vectorizer = joblib.load('tfidf_model.pkl')
+        print("Loaded pre-trained TF-IDF model.")
+    else:
+        print("Pre-trained model not found. Using dynamic vectorization.")
+except Exception as e:
+    print(f"Error loading model: {e}")
 
 @app.route('/api/v1/screen-candidates', methods=['POST'])
 def screen_candidates():
@@ -256,8 +344,15 @@ def screen_candidates():
     
     try:
         # TF-IDF Vectorization
-        tfidf_vectorizer = TfidfVectorizer(stop_words='english')
-        tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
+        global tfidf_vectorizer
+        
+        if tfidf_vectorizer:
+            # Use pre-trained model (transform only)
+            tfidf_matrix = tfidf_vectorizer.transform(documents)
+        else:
+            # Fallback to dynamic fitting if no model
+            temp_vectorizer = TfidfVectorizer(stop_words='english')
+            tfidf_matrix = temp_vectorizer.fit_transform(documents)
         
         # Calculate Cosine Similarity
         # cosine_similarity(job_vector, candidate_vectors)
@@ -282,9 +377,14 @@ def screen_candidates():
             cid = candidate_ids[idx]
             original_skills = candidates[cid].get('skills', [])
             
+            # Extract basic strengths (simple intersection for display purposes)
+             # Note: This is separate from the vector score just for UI 'reasons'
+            req_words = set(requirements.lower().replace(',', ' ').split())
+            matching_skills = [s for s in original_skills if s.lower() in req_words]
+            
             results[cid] = {
                 "matchScore": scaled_score, # RecruiterAIService expects "matchScore" inside the object
-                "strengths": [s for s in original_skills if s.lower() in requirements.lower()][:3],
+                "strengths": matching_skills[:3], # Show top 3 matching skills
                 "weaknesses": ["Skill gaps identified via TF-IDF analysis"],
                 "culturalFitScore": round(np.random.uniform(7.0, 9.5), 1) # Simulation for now
             }
@@ -292,6 +392,8 @@ def screen_candidates():
     except Exception as e:
         print(f"Error in TF-IDF: {e}")
         # Fallback to empty or basic logic if ML fails
+        import traceback
+        traceback.print_exc()
         return jsonify({})
         
     return jsonify(results)
