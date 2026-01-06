@@ -1,10 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Briefcase, LogOut, User } from 'lucide-react';
 
 const Header = () => {
   const { user, logout, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  const isJobsPage = location.pathname === '/jobs';
+  const isDashboardPage = location.pathname.includes('/dashboard');
 
   return (
     <header className="bg-white shadow-sm">
@@ -18,16 +22,20 @@ const Header = () => {
           <nav className="flex items-center space-x-6">
             {isAuthenticated() ? (
               <>
-                <Link to="/jobs" className="text-gray-700 hover:text-primary-600">
-                  Browse Jobs
-                </Link>
-                <Link 
-                  to={user?.role === 'JOB_SEEKER' ? '/jobseeker/dashboard' : '/recruiter/dashboard'}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-primary-600"
-                >
-                  <User className="w-5 h-5" />
-                  <span>Dashboard</span>
-                </Link>
+                {!isJobsPage && (
+                  <Link to="/jobs" className="text-gray-700 hover:text-primary-600">
+                    Browse Jobs
+                  </Link>
+                )}
+                {!isDashboardPage && (
+                  <Link 
+                    to={user?.role === 'JOB_SEEKER' ? '/jobseeker/dashboard' : '/recruiter/dashboard'}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-primary-600"
+                  >
+                    <User className="w-5 h-5" />
+                    <span>Dashboard</span>
+                  </Link>
+                )}
                 <button
                   onClick={logout}
                   className="flex items-center space-x-2 text-gray-700 hover:text-red-600"
@@ -38,9 +46,11 @@ const Header = () => {
               </>
             ) : (
               <>
-                <Link to="/jobs" className="text-gray-700 hover:text-primary-600">
-                  Browse Jobs
-                </Link>
+                {!isJobsPage && (
+                  <Link to="/jobs" className="text-gray-700 hover:text-primary-600">
+                    Browse Jobs
+                  </Link>
+                )}
                 <Link to="/login" className="text-gray-700 hover:text-primary-600">
                   Login
                 </Link>
