@@ -19,6 +19,8 @@ public class ApplicationService {
     private final JobApplicationRepository applicationRepository;
     private final JobSeekerService jobSeekerService;
     private final JobService jobService;
+    private final ResumeService resumeService;
+    private final AIIntegrationService aiIntegrationService;
 
     @Transactional
     public JobApplication applyForJob(UUID userId, JobApplicationRequest request) {
@@ -35,6 +37,23 @@ public class ApplicationService {
         application.setJobPosting(jobPosting);
         application.setStatus("APPLIED");
         application.setCoverLetter(request.getCoverLetter());
+
+        // Calculate AI match score automatically during application
+        try {
+            com.recruitment.entity.Resume resume = resumeService.getPrimaryResume(jobSeeker.getId());
+            if (resume != null && resume.getParsedData() != null) {
+                com.fasterxml.jackson.databind.JsonNode skillGapData = aiIntegrationService.getSkillGapAnalysis(
+                        resume.getParsedData(),
+                        jobPosting.getId());
+                
+                if (skillGapData != null && skillGapData.has("overallMatch")) {
+                    application.setAiMatchScore(java.math.BigDecimal.valueOf(skillGapData.get("overallMatch").asDouble()));
+                }
+            }
+        } catch (Exception e) {
+            // Log error but don't fail the application process
+            System.err.println("Error calculating AI match score during application: " + e.getMessage());
+        }
 
         return applicationRepository.save(application);
     }
