@@ -1,10 +1,11 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Home, Briefcase, FileText, User, PlusCircle, Users } from 'lucide-react';
 
 const Navbar = () => {
   const { isJobSeeker, isRecruiter } = useAuth();
+  const location = useLocation();
 
   const jobSeekerLinks = [
     { to: '/jobseeker/dashboard', icon: Home, label: 'Dashboard' },
@@ -21,7 +22,10 @@ const Navbar = () => {
     { to: '/recruiter/candidates', icon: Users, label: 'Candidates' },
   ];
 
-  const links = isJobSeeker() ? jobSeekerLinks : isRecruiter() ? recruiterLinks : [];
+  const isJobSeekerPath = location.pathname.startsWith('/jobseeker');
+  const isRecruiterPath = location.pathname.startsWith('/recruiter');
+
+  const links = (isJobSeeker() && isJobSeekerPath) ? jobSeekerLinks : (isRecruiter() && isRecruiterPath) ? recruiterLinks : [];
 
   if (links.length === 0) return null;
 
