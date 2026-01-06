@@ -1,5 +1,7 @@
 package com.recruitment.entity;
 
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import org.hibernate.annotations.Type;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -36,9 +38,8 @@ public class JobPosting {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    @Column(columnDefinition = "jsonb")
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
-    private java.util.List<String> requirements = new ArrayList<>();
+    @Column(columnDefinition = "TEXT")
+    private String requirements;
 
     private String location;
 

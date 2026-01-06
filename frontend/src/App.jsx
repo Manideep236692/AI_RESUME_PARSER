@@ -12,6 +12,7 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 // Pages
 import Home from './pages/Home';
 import JobSearch from './pages/JobSearch';
+import { JobDetails } from './pages/JobDetails';
 
 // Auth Components
 import Login from './components/auth/Login';
@@ -73,9 +74,11 @@ function AppContent() {
         <Navbar />
         <main className="flex-grow">
           <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/jobs" element={<JobSearch />} />
+              {/* Public Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/jobs" element={<JobSearch />} />
+              <Route path="/jobs/:id" element={<JobDetails />} />
+
 
             {/* Auth Routes */}
             <Route path="/login" element={
