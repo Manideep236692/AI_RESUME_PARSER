@@ -9,7 +9,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import KMeans
 from sklearn.ensemble import RandomForestClassifier
-from sentence_transformers import SentenceTransformer
 import numpy as np
 import pandas as pd
 import PyPDF2
@@ -50,39 +49,30 @@ def load_models():
             dataset_lookup = joblib.load('dataset_lookup.pkl')
             print(f"Loaded dataset lookup with {len(dataset_lookup)} records.")
 
+        # Load Pre-trained Fit Predictor (Random Forest)
+        if os.path.exists('fit_predictor.pkl'):
+            fit_predictor = joblib.load('fit_predictor.pkl')
+            print("Loaded pre-trained Fit Predictor.")
+        
+        # Load Pre-trained Clustering Model (KMeans)
+        if os.path.exists('cluster_model.pkl'):
+            cluster_model = joblib.load('cluster_model.pkl')
+            print("Loaded pre-trained Clustering model.")
+
         # Deep Learning BERT Embeddings
-        print("Loading BERT model (all-MiniLM-L6-v2)...")
-        bert_model = SentenceTransformer('all-MiniLM-L6-v2')
-        print("BERT model loaded.")
-
-        # Train Supervised Model (Random Forest) if we have enough data
-        if len(dataset_lookup) > 10:
-            print("Training Supervised Fit Predictor...")
-            X = []
-            y = []
-            for record in dataset_lookup:
-                features = [
-                    len(record.get('skills', [])),
-                    record.get('total_experience_years', 0),
-                    1 if record.get('education_level') == 'Master' else 0
-                ]
-                X.append(features)
-                y.append(1 if record.get('total_experience_years', 0) > 3 else 0)
-            
-            fit_predictor = RandomForestClassifier(n_estimators=100)
-            fit_predictor.fit(X, y)
-            print("Supervised Fit Predictor trained.")
-
-            # Clustering (KMeans)
-            print("Performing KMeans Clustering...")
-            cluster_model = KMeans(n_clusters=5, random_state=42, n_init=10)
-            if tfidf_matrix is not None:
-                cluster_model.fit(tfidf_matrix)
-                print("KMeans Clustering completed.")
+        try:
+            print("Loading BERT model (all-MiniLM-L6-v2)...")
+            from sentence_transformers import SentenceTransformer
+            bert_model = SentenceTransformer('all-MiniLM-L6-v2')
+            print("BERT model loaded.")
+        except Exception as bert_e:
+            print(f"Warning: BERT model could not be loaded (likely environment/DLL issue): {bert_e}")
+            bert_model = None
 
     except Exception as e:
         print(f"Error loading models: {e}")
         traceback.print_exc()
+
 
 load_models()
 
