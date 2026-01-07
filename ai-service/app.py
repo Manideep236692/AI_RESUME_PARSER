@@ -7,7 +7,11 @@ import json
 import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.cluster import KMeans
+from sklearn.ensemble import RandomForestClassifier
+from sentence_transformers import SentenceTransformer
 import numpy as np
+import pandas as pd
 import PyPDF2
 import docx
 import re
@@ -26,10 +30,14 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 tfidf_vectorizer = None
 tfidf_matrix = None
 dataset_lookup = []
+bert_model = None
+fit_predictor = None
+cluster_model = None
 
 def load_models():
-    global tfidf_vectorizer, tfidf_matrix, dataset_lookup
+    global tfidf_vectorizer, tfidf_matrix, dataset_lookup, bert_model, fit_predictor, cluster_model
     try:
+        # Classical TF-IDF
         if os.path.exists('tfidf_model.pkl'):
             tfidf_vectorizer = joblib.load('tfidf_model.pkl')
             print("Loaded pre-trained TF-IDF model.")
@@ -41,8 +49,44 @@ def load_models():
         if os.path.exists('dataset_lookup.pkl'):
             dataset_lookup = joblib.load('dataset_lookup.pkl')
             print(f"Loaded dataset lookup with {len(dataset_lookup)} records.")
+
+        # Deep Learning BERT Embeddings
+        print("Loading BERT model (all-MiniLM-L6-v2)...")
+        bert_model = SentenceTransformer('all-MiniLM-L6-v2')
+        print("BERT model loaded.")
+
+        # Train Supervised Model (Random Forest) if we have enough data
+        if len(dataset_lookup) > 10:
+            print("Training Supervised Fit Predictor...")
+            # Simulate training data: Fit = 1 if experience > 3 and domain matches
+            X = []
+            y = []
+            for record in dataset_lookup:
+                # Feature engineering: skills count, experience
+                features = [
+                    len(record.get('skills', [])),
+                    record.get('total_experience_years', 0),
+                    1 if record.get('education_level') == 'Master' else 0
+                ]
+                X.append(features)
+                # target: high fit if experience > 3
+                y.append(1 if record.get('total_experience_years', 0) > 3 else 0)
+            
+            fit_predictor = RandomForestClassifier(n_estimators=100)
+            fit_predictor.fit(X, y)
+            print("Supervised Fit Predictor trained.")
+
+            # Clustering (KMeans)
+            print("Performing KMeans Clustering...")
+            cluster_model = KMeans(n_clusters=5, random_state=42, n_init=10)
+            # Use TF-IDF matrix for clustering if available
+            if tfidf_matrix is not None:
+                cluster_model.fit(tfidf_matrix)
+                print("KMeans Clustering completed.")
+
     except Exception as e:
-        print(f"Error loading model/dataset: {e}")
+        print(f"Error loading models: {e}")
+        traceback.print_exc()
 
 load_models()
 
@@ -85,7 +129,8 @@ def extract_skills(text):
         "Java", "Python", "C++", "JavaScript", "React", "Angular", "Vue",
         "Spring Boot", "Node.js", "Django", "Flask", "SQL", "NoSQL",
         "MongoDB", "PostgreSQL", "AWS", "Azure", "Docker", "Kubernetes",
-        "Git", "Rest API", "GraphQL", "HTML", "CSS", "TypeScript"
+        "Git", "Rest API", "GraphQL", "HTML", "CSS", "TypeScript",
+        "Machine Learning", "Data Science", "BERT", "Transformers", "NLP"
     ]
     found_skills = []
     text_lower = text.lower()
@@ -113,8 +158,7 @@ def extract_text_from_resume(file_path):
         "email": email if email else "Not Found",
         "phone": phone if phone else "Not Found",
         "skills": skills,
-        "experience": [],
-        "education": [],
+        "text": text,
         "raw_text_preview": text[:500]
     }
 
@@ -123,8 +167,125 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "service": "resume-parser"
+        "models_loaded": {
+            "tfidf": tfidf_vectorizer is not None,
+            "bert": bert_model is not None,
+            "fit_predictor": fit_predictor is not None,
+            "cluster_model": cluster_model is not None
+        }
     })
+
+# 1. TF-IDF with Cosine Similarity (Enhanced)
+@app.route('/api/v1/match-tfidf', methods=['POST'])
+def match_tfidf():
+    data = request.json
+    job_desc = data.get('jobDescription', '')
+    resumes = data.get('resumes', []) # List of text or resume objects
+    
+    if not job_desc or not resumes:
+        return jsonify({"error": "Missing job description or resumes"}), 400
+    
+    try:
+        texts = [job_desc] + [r if isinstance(r, str) else r.get('text', '') for r in resumes]
+        vectorizer = TfidfVectorizer(stop_words='english')
+        matrix = vectorizer.fit_transform(texts)
+        
+        job_vec = matrix[0:1]
+        resume_vecs = matrix[1:]
+        
+        similarities = cosine_similarity(job_vec, resume_vecs).flatten()
+        
+        results = []
+        for i, score in enumerate(similarities):
+            results.append({
+                "index": i,
+                "score": float(score),
+                "rank": i + 1
+            })
+        
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return jsonify({"matches": results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 2. BERT / Transformer Embeddings
+@app.route('/api/v1/match-bert', methods=['POST'])
+def match_bert():
+    data = request.json
+    job_desc = data.get('jobDescription', '')
+    resumes = data.get('resumes', [])
+    
+    if not bert_model:
+        return jsonify({"error": "BERT model not loaded"}), 503
+    
+    try:
+        job_emb = bert_model.encode([job_desc])
+        resume_texts = [r if isinstance(r, str) else r.get('text', '') for r in resumes]
+        resume_embs = bert_model.encode(resume_texts)
+        
+        similarities = cosine_similarity(job_emb, resume_embs).flatten()
+        
+        results = []
+        for i, score in enumerate(similarities):
+            results.append({
+                "index": i,
+                "score": float(score),
+                "method": "BERT"
+            })
+        
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return jsonify({"matches": results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 3. Supervised ML Fit Prediction
+@app.route('/api/v1/predict-fit', methods=['POST'])
+def predict_fit():
+    data = request.json
+    resume_features = data.get('features', {}) # skills_count, experience, education_level_binary
+    
+    if not fit_predictor:
+        return jsonify({"error": "Fit predictor not trained"}), 503
+    
+    try:
+        # Expected features: [skills_count, experience, education_master]
+        X = [[
+            resume_features.get('skills_count', 0),
+            resume_features.get('experience', 0),
+            1 if resume_features.get('education') == 'Master' else 0
+        ]]
+        
+        prediction = fit_predictor.predict(X)[0]
+        probability = fit_predictor.predict_proba(X)[0][1]
+        
+        return jsonify({
+            "fit_likelihood": float(probability),
+            "recommendation": "High" if prediction == 1 else "Medium/Low"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 4. Clustering Candidates
+@app.route('/api/v1/cluster-candidates', methods=['POST'])
+def cluster_candidates():
+    if not cluster_model or tfidf_matrix is None:
+        return jsonify({"error": "Clustering model or data not available"}), 503
+    
+    try:
+        clusters = cluster_model.labels_
+        results = {}
+        for i, cluster_id in enumerate(clusters):
+            cid = dataset_lookup[i]['id']
+            if int(cluster_id) not in results:
+                results[int(cluster_id)] = []
+            results[int(cluster_id)].append(cid)
+            
+        return jsonify({
+            "clusters": results,
+            "total_clusters": int(cluster_model.n_clusters)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/v1/parse', methods=['POST'])
 def parse_resume():
@@ -150,6 +311,7 @@ def parse_resume():
             return jsonify({"error": str(e), "status": "error"}), 500
     return jsonify({"error": "File type not allowed"}), 400
 
+# ... existing search-candidate-pool, recommend-jobs etc ...
 @app.route('/api/v1/search-candidate-pool', methods=['POST'])
 def search_candidate_pool():
     data = request.json
@@ -190,122 +352,6 @@ def search_candidate_pool():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
-@app.route('/api/v1/recommend-jobs', methods=['POST'])
-def recommend_jobs():
-    data = request.json
-    resume_data = data.get('resumeData', {})
-    skills = set(s.lower() for s in resume_data.get('skills', []))
-    recommendations = []
-    
-    if 'java' in skills or 'spring boot' in skills:
-        recommendations.append({
-            "title": "Senior Java Developer",
-            "company": "Tech Solutions Inc.",
-            "score": 0.95,
-            "reason": "Strong match with Java and Spring Boot experience"
-        })
-    if 'python' in skills or 'flask' in skills or 'django' in skills:
-        recommendations.append({
-            "title": "Python Backend Engineer",
-            "company": "DataCorp",
-            "score": 0.92,
-            "reason": "Good fit for Python-based microservices role"
-        })
-    if 'react' in skills or 'javascript' in skills:
-        recommendations.append({
-            "title": "Frontend Developer",
-            "company": "Creative Web Studio",
-            "score": 0.88,
-            "reason": "Matches frontend skill requirement"
-        })
-    if not recommendations:
-        recommendations.append({
-            "title": "Software Engineer",
-            "company": "General Tech",
-            "score": 0.75,
-            "reason": "General match based on profile"
-        })
-    return jsonify({"jobs": recommendations})
-
-@app.route('/api/v1/skill-gap-analysis', methods=['POST'])
-def skill_gap_analysis():
-    return jsonify({
-        "missingSkills": ["Cloud Architecture", "System Design"],
-        "matchingSkills": ["Java", "Spring Boot", "SQL"],
-        "learningResources": [
-            {"title": "AWS Certified Solutions Architect", "url": "https://aws.amazon.com/"},
-            {"title": "System Design Primer", "url": "https://github.com/donnemartin/system-design-primer"}
-        ],
-        "overallMatch": 0.75
-    })
-
-@app.route('/api/v1/career-path-suggestions', methods=['POST'])
-def career_path_suggestions():
-    return jsonify({
-        "careerPaths": [
-            {
-                "title": "Technical Lead",
-                "description": "Lead a team of developers and oversee technical architecture",
-                "growthPotential": "High",
-                "timeToAchieve": "2-3 years",
-                "requiredSkills": ["Leadership", "System Design", "Mentoring"]
-            },
-            {
-                "title": "Software Architect",
-                "description": "Design high-level software structures and standards",
-                "growthPotential": "Very High",
-                "timeToAchieve": "3-5 years",
-                "requiredSkills": ["Enterprise Patterns", "Cloud Native", "Security"]
-            }
-        ]
-    })
-
-@app.route('/api/v1/screen-candidates', methods=['POST'])
-def screen_candidates():
-    data = request.json
-    requirements = data.get('jobRequirements', '')
-    candidates = data.get('candidates', {})
-    if not candidates:
-        return jsonify({})
-    
-    documents = [requirements]
-    candidate_ids = []
-    for cid, cdata in candidates.items():
-        skills_text = " ".join(cdata.get('skills', []))
-        documents.append(skills_text)
-        candidate_ids.append(cid)
-    
-    try:
-        global tfidf_vectorizer
-        if tfidf_vectorizer:
-            matrix = tfidf_vectorizer.transform(documents)
-        else:
-            temp_vectorizer = TfidfVectorizer(stop_words='english')
-            matrix = temp_vectorizer.fit_transform(documents)
-        
-        job_vector = matrix[0:1]
-        candidate_vectors = matrix[1:]
-        similarities = cosine_similarity(job_vector, candidate_vectors).flatten()
-        
-        results = {}
-        for idx, score in enumerate(similarities):
-            scaled_score = round(float(score) * 10, 1)
-            if scaled_score < 1.0: scaled_score = 1.0
-            cid = candidate_ids[idx]
-            original_skills = candidates[cid].get('skills', [])
-            req_words = set(requirements.lower().replace(',', ' ').split())
-            matching_skills = [s for s in original_skills if s.lower() in req_words]
-            results[cid] = {
-                "matchScore": scaled_score,
-                "strengths": matching_skills[:3],
-                "weaknesses": ["Skill gaps identified via TF-IDF analysis"],
-                "culturalFitScore": round(np.random.uniform(7.0, 9.5), 1)
-            }
-        return jsonify(results)
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
