@@ -246,4 +246,98 @@ public class AIIntegrationService {
             return objectMapper.createObjectNode();
         }
     }
+
+    public JsonNode matchTfidf(String jobDescription, java.util.List<String> resumes) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("jobDescription", jobDescription);
+            request.put("resumes", resumes);
+
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(request, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    aiServiceUrl + "/api/v1/match-tfidf",
+                    requestEntity,
+                    String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return objectMapper.readTree(response.getBody());
+            }
+            return objectMapper.createObjectNode();
+        } catch (Exception e) {
+            log.error("Error calling TF-IDF matching", e);
+            return objectMapper.createObjectNode();
+        }
+    }
+
+    public JsonNode matchBert(String jobDescription, java.util.List<String> resumes) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("jobDescription", jobDescription);
+            request.put("resumes", resumes);
+
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(request, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    aiServiceUrl + "/api/v1/match-bert",
+                    requestEntity,
+                    String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return objectMapper.readTree(response.getBody());
+            }
+            return objectMapper.createObjectNode();
+        } catch (Exception e) {
+            log.error("Error calling BERT matching", e);
+            return objectMapper.createObjectNode();
+        }
+    }
+
+    public JsonNode predictFit(Map<String, Object> features) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("features", features);
+
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(request, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    aiServiceUrl + "/api/v1/predict-fit",
+                    requestEntity,
+                    String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return objectMapper.readTree(response.getBody());
+            }
+            return objectMapper.createObjectNode();
+        } catch (Exception e) {
+            log.error("Error calling fit prediction", e);
+            return objectMapper.createObjectNode();
+        }
+    }
+
+    public JsonNode clusterCandidates() {
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    aiServiceUrl + "/api/v1/cluster-candidates",
+                    null,
+                    String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return objectMapper.readTree(response.getBody());
+            }
+            return objectMapper.createObjectNode();
+        } catch (Exception e) {
+            log.error("Error calling candidate clustering", e);
+            return objectMapper.createObjectNode();
+        }
+    }
 }

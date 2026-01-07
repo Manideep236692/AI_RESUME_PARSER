@@ -78,4 +78,11 @@ export const searchJobs = (keyword) => api.get('/jobs/search', { params: { keywo
 export const filterJobs = (location, jobType) =>
   api.get('/jobs/filter', { params: { location, jobType } });
 
+// Recruiter AI APIs
+export const screenCandidates = (jobId) => api.get(`/recruiter/ai/screen/${jobId}`);
+export const getShortlist = (jobId, limit = 10) => api.get(`/recruiter/ai/shortlist/${jobId}`, { params: { limit } });
+export const getAdvancedMatch = (jobId, method = 'bert') => api.get(`/recruiter/ai/advanced-match/${jobId}`, { params: { method } });
+export const predictFit = (jobSeekerId) => api.get(`/recruiter/ai/predict-fit/${jobSeekerId}`);
+export const getCandidateClusters = () => api.get('/recruiter/ai/clusters');
+
 export default api;

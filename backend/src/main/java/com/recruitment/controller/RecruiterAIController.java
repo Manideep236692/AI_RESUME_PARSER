@@ -45,4 +45,24 @@ public class RecruiterAIController {
                 recruiterAIService.shortlistCandidatesForJob(jobPostingId, recruiter.getId(), limit);
         return ResponseEntity.ok(shortlistResponse);
     }
+
+    @GetMapping("/advanced-match/{jobPostingId}")
+    @PreAuthorize("hasRole('RECRUITER')")
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getAdvancedMatch(
+            @PathVariable UUID jobPostingId,
+            @RequestParam(defaultValue = "bert") String method) {
+        return ResponseEntity.ok(recruiterAIService.getAdvancedMatching(jobPostingId, method));
+    }
+
+    @GetMapping("/predict-fit/{jobSeekerId}")
+    @PreAuthorize("hasRole('RECRUITER')")
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> predictFit(@PathVariable UUID jobSeekerId) {
+        return ResponseEntity.ok(recruiterAIService.predictFit(jobSeekerId));
+    }
+
+    @GetMapping("/clusters")
+    @PreAuthorize("hasRole('RECRUITER')")
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getClusters() {
+        return ResponseEntity.ok(recruiterAIService.getCandidateClusters());
+    }
 }

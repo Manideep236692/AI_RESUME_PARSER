@@ -98,20 +98,30 @@ public class RecruiterAIService {
      * @return List of shortlisted candidates
      */
     public CandidateShortlistResponse shortlistCandidatesForJob(UUID jobPostingId, UUID recruiterId, int limit) {
-        // Screen all candidates first
-        List<CandidateScreeningResponse> screenedCandidates = screenCandidatesForJob(jobPostingId, recruiterId);
+        // Verify job posting
+        JobPosting jobPosting = jobPostingRepository.findByIdAndRecruiterId(jobPostingId, recruiterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job posting not found"));
 
-        // Sort by match score and take top candidates
+        // Get all resumes
+        List<Resume> allResumes = resumeRepository.findAllPrimaryResumes();
+        List<String> resumeTexts = allResumes.stream()
+                .map(r -> r.getParsedData() != null ? r.getParsedData().get("text").asText() : "")
+                .collect(Collectors.toList());
+
+        // Use BERT for better ranking
+        JsonNode bertResults = aiIntegrationService.matchBert(jobPosting.getDescription(), resumeTexts);
+        
+        List<CandidateScreeningResponse> screenedCandidates = processAdvancedResults(bertResults, allResumes);
+
+        // Sort and limit
         List<CandidateScreeningResponse> shortlistedCandidates = screenedCandidates.stream()
                 .sorted(Comparator.comparing(CandidateScreeningResponse::getMatchScore).reversed())
                 .limit(limit)
                 .collect(Collectors.toList());
 
-        // Group candidates by skill clusters
-        Map<String, List<CandidateScreeningResponse>> skillClusters = groupCandidatesBySkillClusters(
-                shortlistedCandidates);
+        // Group by skill clusters
+        Map<String, List<CandidateScreeningResponse>> skillClusters = groupCandidatesBySkillClusters(shortlistedCandidates);
 
-        // Create shortlist response
         CandidateShortlistResponse response = new CandidateShortlistResponse();
         response.setJobPostingId(jobPostingId);
         response.setTotalCandidatesScreened(screenedCandidates.size());
@@ -121,111 +131,62 @@ public class RecruiterAIService {
         return response;
     }
 
-    /**
-     * Group candidates by skill clusters for better visualization
-     * 
-     * @param candidates List of candidates
-     * @return Map of skill cluster name to list of candidates
-     */
-    private Map<String, List<CandidateScreeningResponse>> groupCandidatesBySkillClusters(
-            List<CandidateScreeningResponse> candidates) {
-        // This would typically use AI to cluster candidates, but for simplicity
-        // we'll use a basic approach based on top skills
-        Map<String, List<CandidateScreeningResponse>> clusters = new HashMap<>();
-
-        for (CandidateScreeningResponse candidate : candidates) {
-            String topSkill = candidate.getKeySkills().isEmpty() ? "Other" : candidate.getKeySkills().get(0);
-
-            if (!clusters.containsKey(topSkill)) {
-                clusters.put(topSkill, new ArrayList<>());
-            }
-
-            clusters.get(topSkill).add(candidate);
+    private List<CandidateScreeningResponse> processAdvancedResults(JsonNode aiResults, List<Resume> allResumes) {
+        List<CandidateScreeningResponse> results = new ArrayList<>();
+        if (aiResults.has("matches") && aiResults.get("matches").isArray()) {
+            aiResults.get("matches").forEach(match -> {
+                int index = match.get("index").asInt();
+                double score = match.get("score").asDouble();
+                
+                if (index < allResumes.size()) {
+                    Resume resume = allResumes.get(index);
+                    if (resume.getJobSeeker() != null && resume.getJobSeeker().getUser() != null) {
+                        CandidateScreeningResponse res = new CandidateScreeningResponse();
+                        res.setJobSeekerId(resume.getJobSeeker().getId());
+                        res.setName(resume.getJobSeeker().getUser().getFullName());
+                        res.setEmail(resume.getJobSeeker().getUser().getEmail());
+                        res.setMatchScore(score * 100);
+                        res.setKeySkills(new ArrayList<>()); // Add logic to extract skills if needed
+                        results.add(res);
+                    }
+                }
+            });
         }
-
-        return clusters;
+        return results;
     }
 
-    // @SuppressWarnings("unchecked") removed as per lint warning
+    public JsonNode getAdvancedMatching(UUID jobPostingId, String method) {
+        JobPosting jobPosting = jobPostingRepository.findById(jobPostingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job posting not found"));
+        
+        List<Resume> allResumes = resumeRepository.findAllPrimaryResumes();
+        List<String> resumeTexts = allResumes.stream()
+                .map(r -> r.getParsedData() != null ? r.getParsedData().get("text").asText() : "")
+                .collect(Collectors.toList());
 
-    private List<CandidateScreeningResponse> processScreeningResults(
-            JsonNode screeningResults,
-            List<Resume> allResumes) {
-
-        List<CandidateScreeningResponse> results = new ArrayList<>();
-
-        try {
-            // Process each candidate result
-            Iterator<Map.Entry<String, JsonNode>> fields = screeningResults.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> entry = fields.next();
-                UUID jobSeekerId = UUID.fromString(entry.getKey());
-                JsonNode candidateResult = entry.getValue();
-
-                // Find the resume for this job seeker
-                Optional<Resume> resumeOpt = allResumes.stream()
-                        .filter(r -> r.getJobSeeker() != null && r.getJobSeeker().getId().equals(jobSeekerId))
-                        .findFirst();
-
-                if (resumeOpt.isPresent()) {
-                    Resume resume = resumeOpt.get();
-                    JobSeeker jobSeeker = resume.getJobSeeker();
-                    if (jobSeeker == null || jobSeeker.getUser() == null) {
-                        log.warn("Resume {} has null job seeker or user, skipping", resume.getId());
-                        continue;
-                    }
-                    User user = jobSeeker.getUser();
-
-                    CandidateScreeningResponse response = new CandidateScreeningResponse();
-                    response.setJobSeekerId(jobSeekerId);
-                    response.setName(user.getFullName());
-                    response.setEmail(user.getEmail());
-
-                    // Extract data from JSON response
-                    if (candidateResult.has("matchScore")) {
-                        response.setMatchScore(candidateResult.get("matchScore").asDouble());
-                    }
-
-                    if (candidateResult.has("strengths") && candidateResult.get("strengths").isArray()) {
-                        List<String> strengths = new ArrayList<>();
-                        candidateResult.get("strengths").forEach(node -> strengths.add(node.asText()));
-                        response.setStrengths(strengths);
-                    }
-
-                    if (candidateResult.has("weaknesses") && candidateResult.get("weaknesses").isArray()) {
-                        List<String> weaknesses = new ArrayList<>();
-                        candidateResult.get("weaknesses").forEach(node -> weaknesses.add(node.asText()));
-                        response.setWeaknesses(weaknesses);
-                    }
-
-                    if (candidateResult.has("culturalFitScore")) {
-                        response.setCulturalFitScore(candidateResult.get("culturalFitScore").asDouble());
-                    }
-
-                    // Set default values for required fields if not present
-                    if (response.getKeySkills() == null) {
-                        response.setKeySkills(new ArrayList<>());
-                    }
-                    if (response.getExperienceYears() == null) {
-                        response.setExperienceYears(0);
-                    }
-
-                    results.add(response);
-                }
-            }
-
-            // Sort by match score (descending), handling null scores
-            results.sort((r1, r2) -> {
-                Double score1 = r1.getMatchScore() != null ? r1.getMatchScore() : 0.0;
-                Double score2 = r2.getMatchScore() != null ? r2.getMatchScore() : 0.0;
-                return Double.compare(score2, score1); // Descending order
-            });
-
-        } catch (Exception e) {
-            log.error("Error processing screening results", e);
-            throw new RuntimeException("Error processing screening results: " + e.getMessage(), e);
+        if ("bert".equalsIgnoreCase(method)) {
+            return aiIntegrationService.matchBert(jobPosting.getDescription(), resumeTexts);
+        } else {
+            return aiIntegrationService.matchTfidf(jobPosting.getDescription(), resumeTexts);
         }
+    }
 
-        return results;
+    public JsonNode predictFit(UUID jobSeekerId) {
+        Resume resume = resumeRepository.findByJobSeekerId(jobSeekerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Resume not found"));
+        
+        JsonNode parsed = resume.getParsedData();
+        Map<String, Object> features = new HashMap<>();
+        if (parsed != null) {
+            features.put("skills_count", parsed.has("skills") ? parsed.get("skills").size() : 0);
+            features.put("experience", 5); // Placeholder or extract from text
+            features.put("education", "Bachelor"); // Placeholder
+        }
+        
+        return aiIntegrationService.predictFit(features);
+    }
+
+    public JsonNode getCandidateClusters() {
+        return aiIntegrationService.clusterCandidates();
     }
 }
