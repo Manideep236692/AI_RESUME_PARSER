@@ -14,13 +14,15 @@ const Navbar = () => {
     { to: '/jobseeker/applications', icon: Briefcase, label: 'Applications' },
   ];
 
-  const recruiterLinks = [
-    { to: '/recruiter/dashboard', icon: Home, label: 'Dashboard' },
-    { to: '/recruiter/profile', icon: User, label: 'Profile' },
-    { to: '/recruiter/post-job', icon: PlusCircle, label: 'Post Job' },
-    { to: '/recruiter/jobs', icon: Briefcase, label: 'My Jobs' },
-    { to: '/recruiter/candidates', icon: Users, label: 'Candidates' },
-  ];
+    const recruiterLinks = [
+      { to: '/recruiter/dashboard', icon: Home, label: 'Dashboard' },
+      { to: '/recruiter/insights', icon: Briefcase, label: 'Business Insights' },
+      { to: '/recruiter/profile', icon: User, label: 'Profile' },
+      { to: '/recruiter/post-job', icon: PlusCircle, label: 'Post Job' },
+      { to: '/recruiter/jobs', icon: Briefcase, label: 'My Jobs' },
+      { to: '/recruiter/candidates', icon: Users, label: 'Candidates' },
+    ];
+
 
   const isJobSeekerPath = location.pathname.startsWith('/jobseeker');
   const isRecruiterPath = location.pathname.startsWith('/recruiter');

@@ -324,11 +324,10 @@ public class AIIntegrationService {
         }
     }
 
-    public JsonNode clusterCandidates() {
+    public JsonNode getBusinessInsights() {
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    aiServiceUrl + "/api/v1/cluster-candidates",
-                    null,
+            ResponseEntity<String> response = restTemplate.getForEntity(
+                    aiServiceUrl + "/api/v1/business-insights",
                     String.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
@@ -336,7 +335,7 @@ public class AIIntegrationService {
             }
             return objectMapper.createObjectNode();
         } catch (Exception e) {
-            log.error("Error calling candidate clustering", e);
+            log.error("Error calling business insights", e);
             return objectMapper.createObjectNode();
         }
     }

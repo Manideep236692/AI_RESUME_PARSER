@@ -189,4 +189,8 @@ public class RecruiterAIService {
     public JsonNode getCandidateClusters() {
         return aiIntegrationService.clusterCandidates();
     }
+
+    public JsonNode getBusinessInsights() {
+        return aiIntegrationService.getBusinessInsights();
+    }
 }

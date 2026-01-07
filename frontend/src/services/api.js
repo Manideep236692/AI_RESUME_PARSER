@@ -84,5 +84,6 @@ export const getShortlist = (jobId, limit = 10) => api.get(`/recruiter/ai/shortl
 export const getAdvancedMatch = (jobId, method = 'bert') => api.get(`/recruiter/ai/advanced-match/${jobId}`, { params: { method } });
 export const predictFit = (jobSeekerId) => api.get(`/recruiter/ai/predict-fit/${jobSeekerId}`);
 export const getCandidateClusters = () => api.get('/recruiter/ai/clusters');
+export const getBusinessInsights = () => api.get('/recruiter/ai/business-insights');
 
 export default api;

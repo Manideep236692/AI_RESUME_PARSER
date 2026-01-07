@@ -13,6 +13,7 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 import Home from './pages/Home';
 import JobSearch from './pages/JobSearch';
 import { JobDetails } from './pages/JobDetails';
+import BusinessInsights from './pages/BusinessInsights';
 
 // Auth Components
 import Login from './components/auth/Login';
@@ -149,11 +150,17 @@ function AppContent() {
                 <ViewCandidates />
               </ProtectedRoute>
             } />
-            <Route path="/recruiter/sourcing" element={
-              <ProtectedRoute allowedRoles={['RECRUITER']}>
-                <CandidateSourcing />
-              </ProtectedRoute>
-            } />
+              <Route path="/recruiter/sourcing" element={
+                <ProtectedRoute allowedRoles={['RECRUITER']}>
+                  <CandidateSourcing />
+                </ProtectedRoute>
+              } />
+              <Route path="/recruiter/insights" element={
+                <ProtectedRoute allowedRoles={['RECRUITER']}>
+                  <BusinessInsights />
+                </ProtectedRoute>
+              } />
+
 
 
             {/* Fallback */}

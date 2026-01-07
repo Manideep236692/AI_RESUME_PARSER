@@ -65,4 +65,10 @@ public class RecruiterAIController {
     public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getClusters() {
         return ResponseEntity.ok(recruiterAIService.getCandidateClusters());
     }
+
+    @GetMapping("/business-insights")
+    @PreAuthorize("hasRole('RECRUITER')")
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getBusinessInsights() {
+        return ResponseEntity.ok(recruiterAIService.getBusinessInsights());
+    }
 }
