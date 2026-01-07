@@ -98,13 +98,14 @@ const BusinessInsights = () => {
             icon={TrendingUp}
             color="bg-purple-600"
           />
-          <StatCard 
-            title="AI Model Confidence" 
-            value="High" 
-            subtext="RF + TF-IDF Hybrid Ensemble"
-            icon={BrainCircuit}
-            color="bg-indigo-600"
-          />
+            <StatCard 
+              title="Talent Value Score" 
+              value={`${insights?.businessValueScore || 85}%`} 
+              subtext="Aggregated ROI potential"
+              icon={BrainCircuit}
+              color="bg-indigo-600"
+            />
+
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

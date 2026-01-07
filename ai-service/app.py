@@ -257,6 +257,14 @@ def business_insights():
         top_skills = pd.Series(all_skills).value_counts().head(10).to_dict()
         
         # 5. Efficiency Metrics (Simulated)
+        metrics = {"accuracy": 94.5, "last_training_date": datetime.now(timezone.utc).strftime("%Y-%m-%d")}
+        if os.path.exists('metrics.json'):
+            try:
+                with open('metrics.json', 'r') as f:
+                    metrics = json.load(f)
+            except:
+                pass
+
         insights = {
             "talentPoolSize": len(df),
             "domainDistribution": domain_counts,
@@ -264,8 +272,9 @@ def business_insights():
             "averageExperienceByDomain": avg_exp,
             "topTrendingSkills": top_skills,
             "estimatedTimeSavedHours": len(df) * 0.5, # 30 mins saved per resume
-            "matchingAccuracy": 94.5, # Constant for demo
-            "lastTrainingDate": datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            "matchingAccuracy": round(metrics.get('accuracy', 0.945) * 100, 1),
+            "lastTrainingDate": metrics.get('last_training_date', datetime.now(timezone.utc).strftime("%Y-%m-%d")),
+            "businessValueScore": round(df['business_fit_score'].mean() * 100, 1) if 'business_fit_score' in df.columns else 85.0
         }
         
         return jsonify(insights)
